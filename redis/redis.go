@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/evoila/infraTESTure/config"
 	"github.com/evoila/infraTESTure/infrastructure"
 	"github.com/fatih/color"
@@ -13,6 +14,7 @@ import (
 
 const (
 	letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	InfoColor    = "\033[1;34m%s\033[0m"
 )
 
 //var spin *spinner.Spinner
@@ -33,6 +35,8 @@ func randomString(length int) string {
 
 // @Service
 func TestService(config *config.Config, infrastructure infrastructure.Infrastructure) {
+	fmt.Printf(InfoColor, "\n##### Service Test #####\n")
+
 	// Actual service Test
 	log.Println("[INFO] Inserting and deleting data to redis...")
 
@@ -70,9 +74,9 @@ func TestService(config *config.Config, infrastructure infrastructure.Infrastruc
 
 	// Check if the key-value-pair was deleted correctly
 	if get(key) == "" {
-		log.Printf("[INFO] Deleting data from Redis %v", color.GreenString("succeeded\n"))
+		log.Printf("[INFO] Deleting data from Redis %v", color.GreenString("succeeded"))
 	}  else {
-		log.Printf("[INFO] Deleting data from Redis %v", color.RedString("failed\n"))
+		log.Printf("[INFO] Deleting data from Redis %v", color.RedString("failed"))
 	}
 
 	shutdown()
@@ -80,6 +84,7 @@ func TestService(config *config.Config, infrastructure infrastructure.Infrastruc
 
 // @Health
 func IsDeploymentRunning(config *config.Config, infrastructure infrastructure.Infrastructure) {
+	fmt.Printf(InfoColor, "\n##### Health Test #####\n")
 
 	// Check if all VMs of a deployment are running
 	log.Printf("[INFO] Checking process state for every VM of Deployment %v...", config.DeploymentName)
@@ -92,8 +97,8 @@ func IsDeploymentRunning(config *config.Config, infrastructure infrastructure.In
 	}
 
 	if infrastructure.IsRunning() {
-		log.Printf("[INFO] Deployment %v is %v", config.DeploymentName, color.GreenString("healthy\n"))
+		log.Printf("[INFO] Deployment %v is %v", config.DeploymentName, color.GreenString("healthy"))
 	} else {
-		log.Printf("[INFO] Deployment %v is %v", config.DeploymentName, color.RedString("not healthy\n"))
+		log.Printf("[INFO] Deployment %v is %v", config.DeploymentName, color.RedString("not healthy"))
 	}
 }
