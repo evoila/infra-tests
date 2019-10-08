@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-	"github.com/briandowns/spinner"
 	"github.com/evoila/infraTESTure/config"
 	"github.com/evoila/infraTESTure/infrastructure"
 	"github.com/fatih/color"
@@ -12,12 +10,15 @@ import (
 	"time"
 )
 
-const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
-var spin *spinner.Spinner
+const (
+	letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+)
+
+//var spin *spinner.Spinner
 
 func init() {
-	spin = spinner.New(spinner.CharSets[33], 100*time.Millisecond)
+	//spin = spinner.New(spinner.CharSets[33], 100*time.Millisecond)
 	rand.Seed(time.Now().UnixNano())
 }
 
@@ -34,8 +35,6 @@ func randomString(length int) string {
 func TestService(config *config.Config, infrastructure infrastructure.Infrastructure) {
 	// Actual service Test
 	log.Println("[INFO] Inserting and deleting data to redis...")
-
-	//spin.Start()
 
 	// Get the ips & append them with the service specific port
 	var addresses []string
@@ -57,32 +56,26 @@ func TestService(config *config.Config, infrastructure infrastructure.Infrastruc
 
 	set(key, value, 0)
 
-	fmt.Printf("Inserting data to Redis ")
+	log.Print("[INFO] Inserting data to Redis ")
 
 	// Check if the key-value-pair was stored correctly
-	if get(key) != value {
-		spin.Stop()
-		color.Red("failed")
+	if get(key) == value {
+		log.Printf("[INFO] Inserting data from Redis %v", color.GreenString("succeeded"))
 	}  else {
-		color.Green("succeeded")
+		log.Printf("[INFO] Inserting data from Redis %v", color.RedString("failed"))
 	}
 
 	// Delete the key-value-pair
 	del(key)
 
-	fmt.Printf("Deleting data from Redis ")
-
 	// Check if the key-value-pair was deleted correctly
-	if get(key) != "" {
-		spin.Stop()
-		color.Red("failed")
+	if get(key) == "" {
+		log.Printf("[INFO] Deleting data from Redis %v", color.GreenString("succeeded\n"))
 	}  else {
-		color.Green("succeeded")
+		log.Printf("[INFO] Deleting data from Redis %v", color.RedString("failed\n"))
 	}
 
 	shutdown()
-
-	spin.Stop()
 }
 
 // @Health
@@ -91,22 +84,16 @@ func IsDeploymentRunning(config *config.Config, infrastructure infrastructure.In
 	// Check if all VMs of a deployment are running
 	log.Printf("[INFO] Checking process state for every VM of Deployment %v...", config.DeploymentName)
 
-	spin.Start()
-
 	deployment := infrastructure.GetDeployment()
-
-	spin.Stop()
 
 	// Check if one of the VMs has a different process state than "running"
 	for _, vm := range deployment.VMs {
 		log.Printf("[INFO] %v/%v - %v", vm.ServiceName, vm.ID, vm.State)
 	}
 
-	fmt.Printf("\n\nDeployment %v is ", config.DeploymentName)
-
-	if !infrastructure.IsRunning() {
-		color.Red("not healthy")
+	if infrastructure.IsRunning() {
+		log.Printf("[INFO] Deployment %v is %v", config.DeploymentName, color.GreenString("healthy\n"))
 	} else {
-		color.Green("healthy")
+		log.Printf("[INFO] Deployment %v is %v", config.DeploymentName, color.RedString("not healthy\n"))
 	}
 }
