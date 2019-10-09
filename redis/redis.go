@@ -188,8 +188,9 @@ func Failover(config *config.Config, infrastructure infrastructure.Infrastructur
 	if get(key) == value {
 		log.Printf("[INFO] Data previously put into redis %v", color.GreenString("still exists"))
 	}  else {
-		log.Printf("[INFO] Data previously put into redis  %v", color.RedString("does not exist anymore"))
+		log.Printf("[INFO] Data previously put into redis %v", color.RedString("does not exist anymore"))
 	}
 
+	del(key)
 	shutdown()
 }
