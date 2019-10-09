@@ -15,16 +15,17 @@ import (
 const (
 	letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	InfoColor    = "\033[1;34m%s\033[0m"
+	WarningColor = "\033[1;33m%s\033[0m"
 )
 
-//var spin *spinner.Spinner
+var healthy = true
 
 func init() {
-	//spin = spinner.New(spinner.CharSets[33], 100*time.Millisecond)
 	rand.Seed(time.Now().UnixNano())
 }
 
 func randomString(length int) string {
+	// Create random strings as test data for redis
 	b := make([]byte, length)
 	for i := range b {
 		b[i] = letters[rand.Intn(len(letters))]
@@ -33,53 +34,92 @@ func randomString(length int) string {
 	return string(b)
 }
 
+// @Info
+func DeploymentInfo(config *config.Config, infrastructure infrastructure.Infrastructure) {
+	fmt.Printf(InfoColor, "\n##### Deployment Info #####\n")
+
+	deployment := infrastructure.GetDeployment()
+
+	log.Printf("Deployment Name: \t%v", deployment.DeploymentName)
+	log.Printf("Host Addresses: \t%v", deployment.Hosts)
+	log.Printf("\t------------VMs------------")
+
+	for _, vm := range deployment.VMs {
+		log.Printf("\tVM: \t\t%v/%v", vm.ServiceName, vm.ID)
+		log.Printf("\tState: \t\t%v", vm.State)
+		log.Printf("\tDisksize: \t%v", vm.DiskSize)
+		log.Printf("\tCPU Usage: \t%v%%", vm.CpuUsage)
+		log.Printf("\tMemory Usage: \t%v (%v%%)", vm.MemoryUsageTotal, vm.MemoryUsagePercentage)
+		log.Printf("\tDisk Usage: \t%v%%", vm.DiskUsage)
+		log.Printf("\t----------------------------")
+	}
+}
+
 // @Service
 func TestService(config *config.Config, infrastructure infrastructure.Infrastructure) {
 	fmt.Printf(InfoColor, "\n##### Service Test #####\n")
 
-	// Actual service Test
-	log.Println("[INFO] Inserting and deleting data to redis...")
+	if healthy {
+		// Actual service Test
+		log.Println("[INFO] Inserting and deleting data to redis...")
 
-	// Get the ips & append them with the service specific port
-	var addresses []string
-	for _, ip := range infrastructure.GetIPs() {
-		addresses = append(addresses, ip + ":" + strconv.Itoa(config.Service.Port))
+		// Get the ips & append them with the service specific port
+		var addresses []string
+		for _, ip := range infrastructure.GetIPs() {
+			addresses = append(addresses, ip + ":" + strconv.Itoa(config.Service.Port))
+		}
+
+		redisConfig := RedisConnectionConfig{
+			Addresses: addresses,
+			Password:  config.Service.Credentials.Password,
+			DB:        0,
+		}
+
+		newRedisClient(&redisConfig)
+
+		// Create some random key-value-pair and store them in redis
+		key := randomString(rand.Intn(100))
+		valueOne := randomString(rand.Intn(100))
+		valueTwo := randomString(rand.Intn(100))
+
+		set(key, valueOne, 0)
+
+		log.Print("[INFO] Inserting Redis data... ")
+
+		// Check if the key-value-pair was stored correctly
+		if get(key) == valueOne {
+			log.Printf("[INFO] Inserting data to Redis %v", color.GreenString("succeeded"))
+		}  else {
+			log.Printf("[INFO] Inserting data to Redis %v", color.RedString("failed"))
+		}
+
+		set(key, valueTwo, 0)
+
+		log.Print("[INFO] Updating Redis data...")
+
+		// Check if the key-value-pair was stored correctly
+		if get(key) == valueTwo {
+			log.Printf("[INFO] Updating data on Redis %v", color.GreenString("succeeded"))
+		}  else {
+			log.Printf("[INFO] Updating data on Redis %v", color.RedString("failed"))
+		}
+
+		log.Print("[INFO] Deleting redis data...")
+
+		// Delete the key-value-pair
+		del(key)
+
+		// Check if the key-value-pair was deleted correctly
+		if get(key) == "" {
+			log.Printf("[INFO] Deleting data from Redis %v", color.GreenString("succeeded"))
+		}  else {
+			log.Printf("[INFO] Deleting data from Redis %v", color.RedString("failed"))
+		}
+
+		shutdown()
+	} else {
+		log.Printf(WarningColor, "[WARN] Skipping service test due to unhealthy deployment")
 	}
-
-	redisConfig := RedisConnectionConfig{
-		Addresses: addresses,
-		Password:  config.Service.Credentials.Password,
-		DB:        0,
-	}
-
-	newRedisClient(&redisConfig)
-
-	// Create some random key-value-pair and store them in redis
-	key := randomString(rand.Intn(30))
-	value := randomString(rand.Intn(30))
-
-	set(key, value, 0)
-
-	log.Print("[INFO] Inserting data to Redis ")
-
-	// Check if the key-value-pair was stored correctly
-	if get(key) == value {
-		log.Printf("[INFO] Inserting data from Redis %v", color.GreenString("succeeded"))
-	}  else {
-		log.Printf("[INFO] Inserting data from Redis %v", color.RedString("failed"))
-	}
-
-	// Delete the key-value-pair
-	del(key)
-
-	// Check if the key-value-pair was deleted correctly
-	if get(key) == "" {
-		log.Printf("[INFO] Deleting data from Redis %v", color.GreenString("succeeded"))
-	}  else {
-		log.Printf("[INFO] Deleting data from Redis %v", color.RedString("failed"))
-	}
-
-	shutdown()
 }
 
 // @Health
@@ -97,8 +137,59 @@ func IsDeploymentRunning(config *config.Config, infrastructure infrastructure.In
 	}
 
 	if infrastructure.IsRunning() {
+		healthy = true
 		log.Printf("[INFO] Deployment %v is %v", config.DeploymentName, color.GreenString("healthy"))
 	} else {
+		healthy = false
 		log.Printf("[INFO] Deployment %v is %v", config.DeploymentName, color.RedString("not healthy"))
 	}
+}
+
+// @Failover
+func Failover(config *config.Config, infrastructure infrastructure.Infrastructure) {
+	fmt.Printf(InfoColor, "\n##### Failover Test #####\n")
+
+	// Get the ips & append them with the service specific port
+	var addresses []string
+	for _, ip := range infrastructure.GetIPs() {
+		addresses = append(addresses, ip + ":" + strconv.Itoa(config.Service.Port))
+	}
+
+	redisConfig := RedisConnectionConfig{
+		Addresses: addresses,
+		Password:  config.Service.Credentials.Password,
+		DB:        0,
+	}
+
+	newRedisClient(&redisConfig)
+
+	key := randomString(rand.Intn(100))
+	value := randomString(rand.Intn(100))
+
+	log.Print("[INFO] Inserting Redis data... ")
+	set(key, value, 0)
+
+	if get(key) == value {
+		log.Printf("[INFO] Inserting data to Redis %v", color.GreenString("succeeded"))
+	}  else {
+		log.Printf("[INFO] Inserting data to Redis %v", color.RedString("failed"))
+	}
+
+	for _, vm := range infrastructure.GetDeployment().VMs {
+		log.Printf("[INFO] Stopping VM %v/%v", vm.ServiceName, vm.ID)
+		infrastructure.Stop(vm.ID)
+	}
+
+	for _, vm := range infrastructure.GetDeployment().VMs {
+		log.Printf("[INFO] Restarting VM %v/%v", vm.ServiceName, vm.ID)
+		infrastructure.Start(vm.ID)
+	}
+
+	if get(key) == value {
+		log.Printf("[INFO] Data previously put into redis %v", color.GreenString("still exists"))
+	}  else {
+		log.Printf("[INFO] Data previously put into redis  %v", color.RedString("does not exist anymore"))
+	}
+
+	shutdown()
 }
