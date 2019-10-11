@@ -19,6 +19,7 @@ const (
 )
 
 var healthy = true
+var deployment infrastructure.Deployment
 
 func init() {
 	rand.Seed(time.Now().UnixNano())
@@ -38,14 +39,14 @@ func randomString(length int) string {
 func DeploymentInfo(config *config.Config, infrastructure infrastructure.Infrastructure) {
 	fmt.Printf(InfoColor, "\n##### Deployment Info #####\n")
 
-	deployment := infrastructure.GetDeployment()
+	deployment = infrastructure.GetDeployment()
 
 	log.Printf("Deployment Name: \t%v", deployment.DeploymentName)
-	log.Printf("Host Addresses: \t%v", deployment.Hosts)
 	log.Printf("\t------------VMs------------")
 
 	for _, vm := range deployment.VMs {
 		log.Printf("\tVM: \t\t%v/%v", vm.ServiceName, vm.ID)
+		log.Printf("\tIps: \t\t%v", vm.IPs)
 		log.Printf("\tState: \t\t%v", vm.State)
 		log.Printf("\tDisksize: \t%v", vm.DiskSize)
 		log.Printf("\tCPU Usage: \t%v%%", vm.CpuUsage)
@@ -65,9 +66,14 @@ func TestService(config *config.Config, infrastructure infrastructure.Infrastruc
 
 		// Get the ips & append them with the service specific port
 		var addresses []string
-		for _, ip := range infrastructure.GetIPs() {
-			addresses = append(addresses, ip + ":" + strconv.Itoa(config.Service.Port))
+		for _, vm := range deployment.VMs {
+			if vm.ServiceName == config.Service.Name {
+				for _, ip := range vm.IPs {
+					addresses = append(addresses, ip + ":" + strconv.Itoa(config.Service.Port))
+				}
+			}
 		}
+
 
 		redisConfig := RedisConnectionConfig{
 			Addresses: addresses,
@@ -151,8 +157,13 @@ func Failover(config *config.Config, infrastructure infrastructure.Infrastructur
 
 	// Get the ips & append them with the service specific port
 	var addresses []string
-	for _, ip := range infrastructure.GetIPs() {
-		addresses = append(addresses, ip + ":" + strconv.Itoa(config.Service.Port))
+
+	for _, vm := range deployment.VMs {
+		if vm.ServiceName == config.Service.Name {
+			for _, ip := range vm.IPs {
+				addresses = append(addresses, ip + ":" + strconv.Itoa(config.Service.Port))
+			}
+		}
 	}
 
 	redisConfig := RedisConnectionConfig{
@@ -175,14 +186,20 @@ func Failover(config *config.Config, infrastructure infrastructure.Infrastructur
 		log.Printf("[INFO] Inserting data to Redis %v", color.RedString("failed"))
 	}
 
-	for _, vm := range infrastructure.GetDeployment().VMs {
-		log.Printf("[INFO] Stopping VM %v/%v", vm.ServiceName, vm.ID)
-		infrastructure.Stop(vm.ID)
+	vms := infrastructure.GetDeployment().VMs
+
+	for _, vm := range vms {
+		if vm.ServiceName == config.Service.Name {
+			log.Printf("[INFO] Stopping VM %v/%v", vm.ServiceName, vm.ID)
+			infrastructure.Stop(vm.ID)
+		}
 	}
 
-	for _, vm := range infrastructure.GetDeployment().VMs {
-		log.Printf("[INFO] Restarting VM %v/%v", vm.ServiceName, vm.ID)
-		infrastructure.Start(vm.ID)
+	for _, vm := range vms {
+		if vm.ServiceName == config.Service.Name {
+			log.Printf("[INFO] Restarting VM %v/%v", vm.ServiceName, vm.ID)
+			infrastructure.Start(vm.ID)
+		}
 	}
 
 	if get(key) == value {
