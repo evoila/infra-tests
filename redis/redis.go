@@ -174,6 +174,7 @@ func Failover(config *config.Config, infrastructure infrastructure.Infrastructur
 
 	newRedisClient(&redisConfig)
 
+	// Write data to redis & check if it was stored correctly
 	key := randomString(rand.Intn(100))
 	value := randomString(rand.Intn(100))
 
@@ -188,6 +189,7 @@ func Failover(config *config.Config, infrastructure infrastructure.Infrastructur
 
 	vms := infrastructure.GetDeployment().VMs
 
+	// Stop all VMs corresponding to the service name
 	for _, vm := range vms {
 		if vm.ServiceName == config.Service.Name {
 			log.Printf("[INFO] Stopping VM %v/%v", vm.ServiceName, vm.ID)
@@ -195,6 +197,7 @@ func Failover(config *config.Config, infrastructure infrastructure.Infrastructur
 		}
 	}
 
+	// Start all VMs corresponding to the service name
 	for _, vm := range vms {
 		if vm.ServiceName == config.Service.Name {
 			log.Printf("[INFO] Restarting VM %v/%v", vm.ServiceName, vm.ID)
@@ -202,6 +205,7 @@ func Failover(config *config.Config, infrastructure infrastructure.Infrastructur
 		}
 	}
 
+	// Check if the data is still there
 	if get(key) == value {
 		log.Printf("[INFO] Data previously put into redis %v", color.GreenString("still exists"))
 	}  else {
