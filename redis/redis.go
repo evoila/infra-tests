@@ -36,7 +36,7 @@ func randomString(length int) string {
 }
 
 // @Info
-func DeploymentInfo(config *config.Config, infrastructure infrastructure.Infrastructure) {
+func DeploymentInfo(config config.Config, infrastructure infrastructure.Infrastructure) {
 	fmt.Printf(InfoColor, "\n##### Deployment Info #####\n")
 
 	deployment = infrastructure.GetDeployment()
@@ -57,7 +57,7 @@ func DeploymentInfo(config *config.Config, infrastructure infrastructure.Infrast
 }
 
 // @Service
-func TestService(config *config.Config, infrastructure infrastructure.Infrastructure) {
+func TestService(config config.Config, infrastructure infrastructure.Infrastructure) {
 	fmt.Printf(InfoColor, "\n##### Service Test #####\n")
 
 	if healthy {
@@ -81,7 +81,7 @@ func TestService(config *config.Config, infrastructure infrastructure.Infrastruc
 			DB:        0,
 		}
 
-		newRedisClient(&redisConfig)
+		newRedisClient(redisConfig)
 
 		// Create some random key-value-pair and store them in redis
 		key := randomString(rand.Intn(100))
@@ -129,7 +129,7 @@ func TestService(config *config.Config, infrastructure infrastructure.Infrastruc
 }
 
 // @Health
-func IsDeploymentRunning(config *config.Config, infrastructure infrastructure.Infrastructure) {
+func IsDeploymentRunning(config config.Config, infrastructure infrastructure.Infrastructure) {
 	fmt.Printf(InfoColor, "\n##### Health Test #####\n")
 
 	// Check if all VMs of a deployment are running
@@ -152,7 +152,7 @@ func IsDeploymentRunning(config *config.Config, infrastructure infrastructure.In
 }
 
 // @Failover
-func Failover(config *config.Config, infrastructure infrastructure.Infrastructure) {
+func Failover(config config.Config, infrastructure infrastructure.Infrastructure) {
 	fmt.Printf(InfoColor, "\n##### Failover Test #####\n")
 
 	// Get the ips & append them with the service specific port
@@ -172,7 +172,7 @@ func Failover(config *config.Config, infrastructure infrastructure.Infrastructur
 		DB:        0,
 	}
 
-	newRedisClient(&redisConfig)
+	newRedisClient(redisConfig)
 
 	// Write data to redis & check if it was stored correctly
 	key := randomString(rand.Intn(100))

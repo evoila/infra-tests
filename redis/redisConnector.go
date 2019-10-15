@@ -17,7 +17,7 @@ type RedisConnectionConfig struct {
 }
 
 // Create a single node redis client based on a given redis config
-func newRedisSingleNodeClient(config *RedisConnectionConfig) *redis.Client {
+func newRedisSingleNodeClient(config RedisConnectionConfig) *redis.Client {
 	var goRedisSingleNodeClient = redis.NewClient(&redis.Options{
 		Addr:     config.Addresses[0],
 		Password: config.Password,
@@ -33,7 +33,7 @@ func newRedisSingleNodeClient(config *RedisConnectionConfig) *redis.Client {
 }
 
 // Create a cluster redis client based on a given redis config
-func newRedisClusterClient(config *RedisConnectionConfig) *redis.ClusterClient {
+func newRedisClusterClient(config RedisConnectionConfig) *redis.ClusterClient {
 	var goRedisClusterClient = redis.NewClusterClient(&redis.ClusterOptions{
 		Addrs:    config.Addresses,
 		Password: config.Password,
@@ -49,7 +49,7 @@ func newRedisClusterClient(config *RedisConnectionConfig) *redis.ClusterClient {
 
 // Check whether the deployment has a redis single node instance or a cluster
 // and call the corresponding function to create a client
-func newRedisClient(config *RedisConnectionConfig) {
+func newRedisClient(config RedisConnectionConfig) {
 	if len(config.Addresses) > 1 {
 		isCluster = true
 		goRedisClusterClient = newRedisClusterClient(config)
