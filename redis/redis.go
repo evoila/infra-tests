@@ -35,6 +35,38 @@ func randomString(length int) string {
 	return string(b)
 }
 
+func openRedisConnection(config *config.Config, deployment infrastructure.Deployment) {
+	// Get the ips & append them with the service specific port
+	var addresses []string
+	for _, vm := range deployment.VMs {
+		if vm.ServiceName == config.Service.Name {
+			for _, ip := range vm.IPs {
+				addresses = append(addresses, ip + ":" + strconv.Itoa(config.Service.Port))
+			}
+		}
+	}
+
+	redisConfig := RedisConnectionConfig{
+		Addresses: addresses,
+		Password:  config.Service.Credentials.Password,
+		DB:        0,
+	}
+
+	newRedisClient(&redisConfig)
+}
+
+func getTestProperties(testName string, config *config.Config) map[string]string{
+	tests := config.Testing.Tests
+
+	for _, test := range tests {
+		if test.Name == testName {
+			return test.Properties
+		}
+	}
+
+	return nil
+}
+
 // @Info
 func DeploymentInfo(config *config.Config, infrastructure infrastructure.Infrastructure) {
 	fmt.Printf(InfoColor, "\n##### Deployment Info #####\n")
@@ -61,27 +93,15 @@ func TestService(config *config.Config, infrastructure infrastructure.Infrastruc
 	fmt.Printf(InfoColor, "\n##### Service Test #####\n")
 
 	if healthy {
+		if deployment.DeploymentName == "" {
+			deployment = infrastructure.GetDeployment()
+		}
+
 		// Actual service Test
 		log.Println("[INFO] Inserting and deleting data to redis...")
 
-		// Get the ips & append them with the service specific port
-		var addresses []string
-		for _, vm := range deployment.VMs {
-			if vm.ServiceName == config.Service.Name {
-				for _, ip := range vm.IPs {
-					addresses = append(addresses, ip + ":" + strconv.Itoa(config.Service.Port))
-				}
-			}
-		}
-
-
-		redisConfig := RedisConnectionConfig{
-			Addresses: addresses,
-			Password:  config.Service.Credentials.Password,
-			DB:        0,
-		}
-
-		newRedisClient(&redisConfig)
+		openRedisConnection(config, deployment)
+		defer shutdown()
 
 		// Create some random key-value-pair and store them in redis
 		key := randomString(rand.Intn(100))
@@ -121,8 +141,6 @@ func TestService(config *config.Config, infrastructure infrastructure.Infrastruc
 		}  else {
 			log.Printf("[INFO] Deleting data from Redis %v", color.RedString("failed"))
 		}
-
-		shutdown()
 	} else {
 		log.Printf(WarningColor, "[WARN] Skipping service test due to unhealthy deployment")
 	}
@@ -131,6 +149,10 @@ func TestService(config *config.Config, infrastructure infrastructure.Infrastruc
 // @Health
 func IsDeploymentRunning(config *config.Config, infrastructure infrastructure.Infrastructure) {
 	fmt.Printf(InfoColor, "\n##### Health Test #####\n")
+
+	if deployment.DeploymentName == "" {
+		deployment = infrastructure.GetDeployment()
+	}
 
 	// Check if all VMs of a deployment are running
 	log.Printf("[INFO] Checking process state for every VM of Deployment %v...", config.DeploymentName)
@@ -155,24 +177,12 @@ func IsDeploymentRunning(config *config.Config, infrastructure infrastructure.In
 func Failover(config *config.Config, infrastructure infrastructure.Infrastructure) {
 	fmt.Printf(InfoColor, "\n##### Failover Test #####\n")
 
-	// Get the ips & append them with the service specific port
-	var addresses []string
-
-	for _, vm := range deployment.VMs {
-		if vm.ServiceName == config.Service.Name {
-			for _, ip := range vm.IPs {
-				addresses = append(addresses, ip + ":" + strconv.Itoa(config.Service.Port))
-			}
-		}
+	if deployment.DeploymentName == "" {
+		deployment = infrastructure.GetDeployment()
 	}
 
-	redisConfig := RedisConnectionConfig{
-		Addresses: addresses,
-		Password:  config.Service.Credentials.Password,
-		DB:        0,
-	}
-
-	newRedisClient(&redisConfig)
+	openRedisConnection(config, deployment)
+	defer shutdown()
 
 	// Write data to redis & check if it was stored correctly
 	key := randomString(rand.Intn(100))
@@ -213,5 +223,122 @@ func Failover(config *config.Config, infrastructure infrastructure.Infrastructur
 	}
 
 	del(key)
-	shutdown()
+}
+
+// @Storage
+func FillOneVM(config *config.Config, infrastructure infrastructure.Infrastructure) {
+	fmt.Printf(InfoColor, "\n##### Storage Test For One Random VM #####\n")
+
+	if deployment.DeploymentName == "" {
+		deployment = infrastructure.GetDeployment()
+	}
+
+	openRedisConnection(config, deployment)
+	defer shutdown()
+
+	// Write data to redis & check if it was stored correctly
+	key := randomString(rand.Intn(100))
+	value := randomString(rand.Intn(100))
+
+	log.Print("[INFO] Inserting Redis data... ")
+	set(key, value, 0)
+
+	if get(key) == value {
+		log.Printf("[INFO] Inserting data to Redis %v", color.GreenString("succeeded"))
+	}  else {
+		log.Printf("[INFO] Inserting data to Redis %v", color.RedString("failed"))
+	}
+
+	del(key)
+
+	index := rand.Intn(3)
+	vmId := deployment.VMs[index].ID
+	//TODO: Make size not hardcoded
+	size := 10240
+	path := getTestProperties("storage", config)["path"]
+	filename := fmt.Sprintf("%s.txt", randomString(rand.Intn(10)))
+
+	log.Printf("[INFO] Filling storage of VM %s/%s...", deployment.VMs[index].ServiceName, vmId)
+
+	infrastructure.FillDisk(size, path, filename, vmId)
+
+	// Write data to redis & check if it was stored correctly
+	key = randomString(rand.Intn(100))
+	value = randomString(rand.Intn(100))
+
+	log.Print("[INFO] Inserting Redis data... ")
+	set(key, value, 0)
+
+	if get(key) == value {
+		log.Printf("[INFO] Inserting data to Redis %v", color.GreenString("succeeded"))
+	}  else {
+		log.Printf("[INFO] Inserting data to Redis %v", color.RedString("failed"))
+	}
+
+	del(key)
+
+	log.Printf("[INFO] Cleanup storage of VM %s/%s...", deployment.VMs[index].ServiceName, vmId)
+
+	infrastructure.CleanupDisk(path, filename, vmId)
+}
+
+// @Storage
+func FillAllVM(config *config.Config, infrastructure infrastructure.Infrastructure) {
+	fmt.Printf(InfoColor, "\n##### Storage Test For All VMs #####\n")
+
+	if deployment.DeploymentName == "" {
+		deployment = infrastructure.GetDeployment()
+	}
+
+	openRedisConnection(config, deployment)
+	defer shutdown()
+
+	// Write data to redis & check if it was stored correctly
+	key := randomString(rand.Intn(100))
+	value := randomString(rand.Intn(100))
+
+	log.Print("[INFO] Inserting Redis data... ")
+	set(key, value, 0)
+
+	if get(key) == value {
+		log.Printf("[INFO] Inserting data to Redis %v", color.GreenString("succeeded"))
+	}  else {
+		log.Printf("[INFO] Inserting data to Redis %v", color.RedString("failed"))
+	}
+
+	del(key)
+
+	//TODO: Make Size not hardcoded
+	size := 10240
+	path := getTestProperties("storage", config)["path"]
+	filename := fmt.Sprintf("%s.txt", randomString(rand.Intn(10)))
+
+	vms := deployment.VMs
+
+	for _, vm := range vms {
+		log.Printf("[INFO] Filling storage of VM %s/%s...", vm.ServiceName, vm.ID)
+
+		infrastructure.FillDisk(size, path, filename, vm.ID)
+	}
+
+	// Write data to redis & check if it was stored correctly
+	key = randomString(rand.Intn(100))
+	value = randomString(rand.Intn(100))
+
+	log.Print("[INFO] Inserting Redis data... ")
+	set(key, value, 0)
+
+	if get(key) == value {
+		log.Printf("[INFO] Inserting data to Redis %v", color.GreenString("succeeded"))
+	}  else {
+		log.Printf("[INFO] Inserting data to Redis %v", color.RedString("failed"))
+	}
+
+	del(key)
+
+	for _, vm := range vms {
+		log.Printf("[INFO] Cleanup storage of VM %s/%s...", vm.ServiceName, vm.ID)
+
+		infrastructure.CleanupDisk(path, filename, vm.ID)
+	}
 }
