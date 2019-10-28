@@ -83,7 +83,7 @@ func DeploymentInfo(config *config.Config, infrastructure infrastructure.Infrast
 		log.Printf("\tDisksize: \t%v", vm.DiskSize)
 		log.Printf("\tCPU Usage: \t%v%%", vm.CpuUsage)
 		log.Printf("\tMemory Usage: \t%v (%v%%)", vm.MemoryUsageTotal, vm.MemoryUsagePercentage)
-		log.Printf("\tDisk Usage: \t%v%%", vm.DiskUsage)
+		log.Printf("\tDisk Usage: \t%v%%", vm.DiskUsagePercentage)
 		log.Printf("\t----------------------------")
 	}
 }
@@ -253,14 +253,13 @@ func FillOneVM(config *config.Config, infrastructure infrastructure.Infrastructu
 
 	index := rand.Intn(3)
 	vmId := deployment.VMs[index].ID
-	//TODO: Make size not hardcoded
-	size := 10240
+	size := deployment.VMs[index].DiskSize
 	path := getTestProperties("storage", config)["path"]
 	filename := fmt.Sprintf("%s.txt", randomString(rand.Intn(10)))
 
 	log.Printf("[INFO] Filling storage of VM %s/%s...", deployment.VMs[index].ServiceName, vmId)
 
-	infrastructure.FillDisk(size, path, filename, vmId)
+	infrastructure.FillDisk(int(size), path, filename, vmId)
 
 	// Write data to redis & check if it was stored correctly
 	key = randomString(rand.Intn(100))
@@ -308,14 +307,14 @@ func FillAllVM(config *config.Config, infrastructure infrastructure.Infrastructu
 
 	del(key)
 
-	//TODO: Make Size not hardcoded
-	size := 10240
 	path := getTestProperties("storage", config)["path"]
 	filename := fmt.Sprintf("%s.txt", randomString(rand.Intn(10)))
 
 	vms := deployment.VMs
 
 	for _, vm := range vms {
+		size := int(vm.DiskSize)
+
 		log.Printf("[INFO] Filling storage of VM %s/%s...", vm.ServiceName, vm.ID)
 
 		infrastructure.FillDisk(size, path, filename, vm.ID)
