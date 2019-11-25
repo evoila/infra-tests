@@ -22,11 +22,14 @@ func newRedisSingleNodeClient(config *RedisConnectionConfig) *redis.Client {
 		Addr:     config.Addresses[0],
 		Password: config.Password,
 		DB:       config.DB,
+		WriteTimeout: 2*time.Second,
+		ReadTimeout: 2*time.Second,
 	})
 
 	_, err := goRedisSingleNodeClient.Ping().Result()
+
 	if err != nil {
-		panic(err)
+		log.Printf("[ERROR] %v", err.Error())
 	}
 
 	return goRedisSingleNodeClient
@@ -37,11 +40,13 @@ func newRedisClusterClient(config *RedisConnectionConfig) *redis.ClusterClient {
 	var goRedisClusterClient = redis.NewClusterClient(&redis.ClusterOptions{
 		Addrs:    config.Addresses,
 		Password: config.Password,
+		WriteTimeout: 2*time.Second,
+		ReadTimeout: 2*time.Second,
 	})
 
 	_, err := goRedisClusterClient.Ping().Result()
 	if err != nil {
-		panic(err)
+		log.Printf("[ERROR] %v", err.Error())
 	}
 
 	return goRedisClusterClient
@@ -61,7 +66,7 @@ func newRedisClient(config *RedisConnectionConfig) {
 
 func set(key string, value string, duration time.Duration) {
 	if isCluster {
-		goRedisClusterClient.Set(key, value, duration)
+		 goRedisClusterClient.Set(key, value, duration)
 	} else {
 		goRedisSingleNodeClient.Set(key, value, duration)
 	}

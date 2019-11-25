@@ -55,7 +55,7 @@ func openRedisConnection(config *config.Config, deployment infrastructure.Deploy
 	newRedisClient(&redisConfig)
 }
 
-func getTestProperties(testName string, config *config.Config) map[string]string{
+func getTestProperties(config *config.Config, testName string) map[string]string{
 	tests := config.Testing.Tests
 
 	for _, test := range tests {
@@ -65,6 +65,18 @@ func getTestProperties(testName string, config *config.Config) map[string]string
 	}
 
 	return nil
+}
+
+func createSampleDataSet(amount int) map[string]string {
+	dataSet := make(map[string]string)
+
+	for i := 0; i < amount; i++ {
+		key := randomString(rand.Intn(100))
+		value := randomString(rand.Intn(100))
+		dataSet[key] = value
+	}
+
+	return dataSet
 }
 
 // @Info
@@ -226,62 +238,6 @@ func Failover(config *config.Config, infrastructure infrastructure.Infrastructur
 }
 
 // @Storage
-func FillOneVM(config *config.Config, infrastructure infrastructure.Infrastructure) {
-	fmt.Printf(InfoColor, "\n##### Storage Test For One Random VM #####\n")
-
-	if deployment.DeploymentName == "" {
-		deployment = infrastructure.GetDeployment()
-	}
-
-	openRedisConnection(config, deployment)
-	defer shutdown()
-
-	// Write data to redis & check if it was stored correctly
-	key := randomString(rand.Intn(100))
-	value := randomString(rand.Intn(100))
-
-	log.Print("[INFO] Inserting Redis data... ")
-	set(key, value, 0)
-
-	if get(key) == value {
-		log.Printf("[INFO] Inserting data to Redis %v", color.GreenString("succeeded"))
-	}  else {
-		log.Printf("[INFO] Inserting data to Redis %v", color.RedString("failed"))
-	}
-
-	del(key)
-
-	index := rand.Intn(3)
-	vmId := deployment.VMs[index].ID
-	size := deployment.VMs[index].DiskSize
-	path := getTestProperties("storage", config)["path"]
-	filename := fmt.Sprintf("%s.txt", randomString(rand.Intn(10)))
-
-	log.Printf("[INFO] Filling storage of VM %s/%s...", deployment.VMs[index].ServiceName, vmId)
-
-	infrastructure.FillDisk(int(size), path, filename, vmId)
-
-	// Write data to redis & check if it was stored correctly
-	key = randomString(rand.Intn(100))
-	value = randomString(rand.Intn(100))
-
-	log.Print("[INFO] Inserting Redis data... ")
-	set(key, value, 0)
-
-	if get(key) == value {
-		log.Printf("[INFO] Inserting data to Redis %v", color.GreenString("succeeded"))
-	}  else {
-		log.Printf("[INFO] Inserting data to Redis %v", color.RedString("failed"))
-	}
-
-	del(key)
-
-	log.Printf("[INFO] Cleanup storage of VM %s/%s...", deployment.VMs[index].ServiceName, vmId)
-
-	infrastructure.CleanupDisk(path, filename, vmId)
-}
-
-// @Storage
 func FillAllVM(config *config.Config, infrastructure infrastructure.Infrastructure) {
 	fmt.Printf(InfoColor, "\n##### Storage Test For All VMs #####\n")
 
@@ -307,13 +263,13 @@ func FillAllVM(config *config.Config, infrastructure infrastructure.Infrastructu
 
 	del(key)
 
-	path := getTestProperties("storage", config)["path"]
+	path := getTestProperties(config, "storage")["path"]
 	filename := fmt.Sprintf("%s.txt", randomString(rand.Intn(10)))
 
 	vms := deployment.VMs
 
 	for _, vm := range vms {
-		size := int(vm.DiskSize)
+		size := 1024
 
 		log.Printf("[INFO] Filling storage of VM %s/%s...", vm.ServiceName, vm.ID)
 
@@ -339,5 +295,127 @@ func FillAllVM(config *config.Config, infrastructure infrastructure.Infrastructu
 		log.Printf("[INFO] Cleanup storage of VM %s/%s...", vm.ServiceName, vm.ID)
 
 		infrastructure.CleanupDisk(path, filename, vm.ID)
+	}
+}
+
+// @Package Loss
+func PackageLoss(config *config.Config, infrastructure infrastructure.Infrastructure) {
+	fmt.Printf(InfoColor, "\n##### Package Loss Test #####\n")
+
+	if deployment.DeploymentName == "" {
+		deployment = infrastructure.GetDeployment()
+	}
+
+	directorIp := getTestProperties(config, "package loss")["directorIp"]
+
+	tc := infrastructure.SimulatePackageLoss(50, 0)
+
+	for _, vm := range deployment.VMs {
+		log.Printf("[INFO] Adding 50%% package loss on VM %s/%s", vm.ServiceName, vm.ID)
+
+		infrastructure.AddTrafficControl(vm.ID, directorIp, tc)
+	}
+
+	openRedisConnection(config, deployment)
+	defer shutdown()
+
+	// Write data to redis & check if it was stored correctly
+	log.Print("[INFO] Inserting Redis data... ")
+
+	sampleData := createSampleDataSet(20)
+
+	for key, value := range sampleData {
+		set(key, value, 0)
+	}
+
+	succeeded := 0.0
+	failed := 0.0
+
+	for key, value := range sampleData {
+		if get(key) == value {
+			log.Printf("[INFO] Inserting data to Redis %v", color.GreenString("succeeded"))
+			succeeded++
+		}  else {
+			log.Printf("[INFO] Inserting data to Redis %v", color.RedString("failed"))
+			failed++
+		}
+	}
+
+	log.Printf("[INFO] %f%% requests suceeded, %f%% requests failed.", succeeded/20*100, failed/20*100)
+
+	for key := range sampleData {
+		del(key)
+	}
+
+	for _, vm := range deployment.VMs {
+		log.Printf("[INFO] Removing Traffic Shaping on VM %s/%s", vm.ServiceName, vm.ID)
+
+		infrastructure.RemoveTrafficControl(vm.ID)
+	}
+}
+
+// @Network Delay
+func NetworkDelay(config *config.Config, infrastructure infrastructure.Infrastructure) {
+	fmt.Printf(InfoColor, "\n##### Network Delay Test #####\n")
+
+	dataAmount := 100
+
+	if deployment.DeploymentName == "" {
+		deployment = infrastructure.GetDeployment()
+	}
+
+	sampleData := createSampleDataSet(dataAmount)
+
+	openRedisConnection(config, deployment)
+	defer shutdown()
+
+	log.Print("[INFO] Inserting Redis data before traffic shaping... ")
+
+	start := time.Now()
+
+	for key, value := range sampleData {
+		set(key, value, 0)
+	}
+
+	elapsed := time.Since(start)
+
+	log.Printf("[INFO] Inserting Redis data took %s.", elapsed)
+
+	for key := range sampleData {
+		del(key)
+	}
+
+	directorIp := getTestProperties(config, "network delay")["directorIp"]
+
+	tc := infrastructure.SimulateNetworkDelay(500, 0)
+
+	for _, vm := range deployment.VMs {
+		log.Printf("[INFO] Adding 500ms delay on VM %s/%s", vm.ServiceName, vm.ID)
+
+		infrastructure.AddTrafficControl(vm.ID, directorIp, tc)
+	}
+
+	sampleData = createSampleDataSet(dataAmount)
+
+	log.Print("[INFO] Inserting Redis data after traffic shaping... ")
+
+	start = time.Now()
+
+	for key, value := range sampleData {
+		set(key, value, 0)
+	}
+
+	elapsed = time.Since(start)
+
+	log.Printf("[INFO] Inserting Redis data took %s.", elapsed)
+
+	for key := range sampleData {
+		del(key)
+	}
+
+	for _, vm := range deployment.VMs {
+		log.Printf("[INFO] Removing Traffic Shaping on VM %s/%s", vm.ServiceName, vm.ID)
+
+		infrastructure.RemoveTrafficControl(vm.ID)
 	}
 }
