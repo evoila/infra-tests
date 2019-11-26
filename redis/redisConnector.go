@@ -99,3 +99,27 @@ func shutdown() {
 		log.Printf("[ERROR] %v", err)
 	}
 }
+
+func bulkSet(values map[string]string) {
+	for key, value := range values {
+		set(key, value, 0)
+	}
+}
+
+func bulkSetSuccessful(values map[string]string) bool {
+	for key, value := range values {
+		if get(key) != value {
+			return false
+		}
+	}
+	return true
+}
+
+func deletionSuccessful(values map[string]string) bool {
+	for key := range values {
+		if get(key) != "" {
+			return false
+		}
+	}
+	return true
+}
