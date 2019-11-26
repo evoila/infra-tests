@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// @CPU
+// @CPU Load
 func CPUStressTest(config *config.Config, infrastructure infrastructure.Infrastructure) {
 	fmt.Printf(InfoColor, "\n##### CPU Stress Test #####\n")
 
@@ -84,7 +84,7 @@ func CPUStressTest(config *config.Config, infrastructure infrastructure.Infrastr
 	time.Sleep(30 * time.Second)
 }
 
-// @RAM
+// @RAM Load
 func MemoryStressTest(config *config.Config, infrastructure infrastructure.Infrastructure) {
 	fmt.Printf(InfoColor, "\n##### Memory Stress Test #####\n")
 
