@@ -68,8 +68,8 @@ func createSampleDataSet(amount int) map[string]string {
 	dataSet := make(map[string]string)
 
 	for i := 0; i < amount; i++ {
-		key := randomString(rand.Intn(100))
-		value := randomString(rand.Intn(100))
+		key := randomString(rand.Intn(99)+1)
+		value := randomString(rand.Intn(99)+1)
 		dataSet[key] = value
 	}
 

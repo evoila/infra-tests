@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/go-redis/redis"
 	"log"
 	"time"
@@ -22,8 +23,8 @@ func newRedisSingleNodeClient(config *RedisConnectionConfig) *redis.Client {
 		Addr:     config.Addresses[0],
 		Password: config.Password,
 		DB:       config.DB,
-		WriteTimeout: 2*time.Second,
-		ReadTimeout: 2*time.Second,
+		WriteTimeout: 10*time.Second,
+		ReadTimeout: 10*time.Second,
 	})
 
 	_, err := goRedisSingleNodeClient.Ping().Result()
@@ -40,8 +41,8 @@ func newRedisClusterClient(config *RedisConnectionConfig) *redis.ClusterClient {
 	var goRedisClusterClient = redis.NewClusterClient(&redis.ClusterOptions{
 		Addrs:    config.Addresses,
 		Password: config.Password,
-		WriteTimeout: 2*time.Second,
-		ReadTimeout: 2*time.Second,
+		WriteTimeout: 10*time.Second,
+		ReadTimeout: 10*time.Second,
 	})
 
 	_, err := goRedisClusterClient.Ping().Result()

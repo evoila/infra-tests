@@ -13,7 +13,7 @@ import (
 func PackageLoss(config *config.Config, infrastructure infrastructure.Infrastructure) {
 	fmt.Printf(InfoColor, "\n##### Package Loss Test #####\n")
 
-	dataAmount := 20
+	dataAmount := 100
 	lossPercentage := 50
 
 	if deployment.DeploymentName == "" {
