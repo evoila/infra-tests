@@ -13,17 +13,22 @@ import (
 func PackageLoss(config *config.Config, infrastructure infrastructure.Infrastructure) {
 	fmt.Printf(InfoColor, "\n##### Package Loss Test #####\n")
 
-	dataAmount := 100
+	// Amount of test data & package loss percentage
+	dataAmount := 20
 	lossPercentage := 50
 
 	if deployment.DeploymentName == "" {
 		deployment = infrastructure.GetDeployment()
 	}
 
+	// If you add 100% package loss to a bosh VM the director will think that it failed
+	// and tries to recreate it. So we need the director ip in order to exclude it from
+	// the traffic shaping rule
 	directorIp := getTestProperties(config, "package loss")["directorIp"]
 
 	tc := infrastructure.SimulatePackageLoss(lossPercentage, 0)
 
+	// Add package loss to every vm
 	for _, vm := range deployment.VMs {
 		log.Printf("[INFO] Adding %d%% package loss on VM %s/%s", lossPercentage, vm.ServiceName, vm.ID)
 
@@ -40,6 +45,7 @@ func PackageLoss(config *config.Config, infrastructure infrastructure.Infrastruc
 
 	bulkSet(sampleData)
 
+	// Keep track of how many requests succeeded and how may failed
 	succeeded := 0.0
 	failed := 0.0
 
@@ -55,6 +61,7 @@ func PackageLoss(config *config.Config, infrastructure infrastructure.Infrastruc
 		color.GreenString(fmt.Sprintf("%0.2f%%", succeeded/float64(dataAmount)*100)),
 		color.RedString(fmt.Sprintf("%0.2f%%", failed/float64(dataAmount)*100)))
 
+	// Remove package loss from all vms again
 	for _, vm := range deployment.VMs {
 		log.Printf("[INFO] Removing Traffic Shaping on VM %s/%s", vm.ServiceName, vm.ID)
 
@@ -70,6 +77,7 @@ func PackageLoss(config *config.Config, infrastructure infrastructure.Infrastruc
 func NetworkDelay(config *config.Config, infrastructure infrastructure.Infrastructure) {
 	fmt.Printf(InfoColor, "\n##### Network Delay Test #####\n")
 
+	// Amount of test data & package loss percentage
 	dataAmount := 100
 	delay := 500
 
@@ -84,6 +92,7 @@ func NetworkDelay(config *config.Config, infrastructure infrastructure.Infrastru
 
 	log.Print("[INFO] Inserting Redis data before traffic shaping... ")
 
+	// Measure the time it takes to put the sample data into redis without the network delay
 	start := time.Now()
 
 	bulkSet(sampleData)
@@ -102,10 +111,14 @@ func NetworkDelay(config *config.Config, infrastructure infrastructure.Infrastru
 		del(key)
 	}
 
+	// If you add a high network delay to a bosh VM the director will think that it failed
+	// and tries to recreate it. So we need the director ip in order to exclude it from
+	// the traffic shaping rule
 	directorIp := getTestProperties(config, "network delay")["directorIp"]
 
 	tc := infrastructure.SimulateNetworkDelay(delay, 0)
 
+	// Add network delay to every vm
 	for _, vm := range deployment.VMs {
 		log.Printf("[INFO] Adding %dms delay on VM %s/%s", delay, vm.ServiceName, vm.ID)
 
@@ -116,6 +129,7 @@ func NetworkDelay(config *config.Config, infrastructure infrastructure.Infrastru
 
 	log.Print("[INFO] Inserting Redis data after traffic shaping... ")
 
+	// Measure the time it takes to put the sample data into redis after adding the network delay
 	start = time.Now()
 
 	bulkSet(sampleData)
@@ -130,6 +144,7 @@ func NetworkDelay(config *config.Config, infrastructure infrastructure.Infrastru
 		log.Printf("[INFO] Inserting data to Redis %v", color.RedString("failed"))
 	}
 
+	// Remove network delay from all vms
 	for _, vm := range deployment.VMs {
 		log.Printf("[INFO] Removing Traffic Shaping on VM %s/%s", vm.ServiceName, vm.ID)
 

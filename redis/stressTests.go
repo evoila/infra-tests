@@ -17,6 +17,7 @@ func CPUStressTest(config *config.Config, infrastructure infrastructure.Infrastr
 		deployment = infrastructure.GetDeployment()
 	}
 
+	// Amount of test data & cpu load percentage
 	percentage := 100
 	dataAmount := 100
 
@@ -27,6 +28,7 @@ func CPUStressTest(config *config.Config, infrastructure infrastructure.Infrastr
 
 	log.Print("[INFO] Inserting Redis data before increasing CPU load... ")
 
+	// Measure the time it takes to put the sample data into redis without the cpu load
 	start := time.Now()
 
 	bulkSet(sampleData)
@@ -45,18 +47,22 @@ func CPUStressTest(config *config.Config, infrastructure infrastructure.Infrastr
 		del(key)
 	}
 
+	// Increase CPU load
 	for _, vm := range deployment.VMs {
 		log.Printf("[INFO] Increase CPU load of VM %s/%s up to %d%%...", vm.ServiceName, vm.ID, percentage)
 
 		go infrastructure.StartCPULoad(vm.ID, percentage)
 	}
 
+	// CPU load does not increase all of the sudden, so we have to wait here
 	time.Sleep(30 * time.Second)
 
 	sampleData = createSampleDataSet(dataAmount)
 
 	log.Print("[INFO] Inserting Redis data after increasing CPU load... ")
 
+
+	// Measure the time it takes to put the sample data into redis with the CPU load
 	start = time.Now()
 
 	bulkSet(sampleData)
@@ -75,6 +81,7 @@ func CPUStressTest(config *config.Config, infrastructure infrastructure.Infrastr
 		del(key)
 	}
 
+	// Decrease CPU load
 	for _, vm := range deployment.VMs {
 		log.Printf("[INFO] Decrease CPU load of VM %s/%s...", vm.ServiceName, vm.ID)
 
@@ -92,6 +99,7 @@ func MemoryStressTest(config *config.Config, infrastructure infrastructure.Infra
 		deployment = infrastructure.GetDeployment()
 	}
 
+	// Amount of test data & cpu load percentage
 	percentage := 100
 	dataAmount := 100
 
@@ -102,6 +110,7 @@ func MemoryStressTest(config *config.Config, infrastructure infrastructure.Infra
 
 	log.Print("[INFO] Inserting Redis data before increasing Memory load... ")
 
+	// Measure the time it takes to put the sample data into redis without the RAM load
 	start := time.Now()
 
 	bulkSet(sampleData)
@@ -120,18 +129,21 @@ func MemoryStressTest(config *config.Config, infrastructure infrastructure.Infra
 		del(key)
 	}
 
+	// Increase ram load
 	for _, vm := range deployment.VMs {
 		log.Printf("[INFO] Increase Memory load of VM %s/%s up to %d%%...", vm.ServiceName, vm.ID, percentage)
 
 		go infrastructure.StartMemLoad(vm.ID, float64(percentage))
 	}
 
-	time.Sleep(40 * time.Second)
+	// RAM load does not increase all of the sudden, so we have to wait here (again)
+	time.Sleep(30 * time.Second)
 
 	sampleData = createSampleDataSet(dataAmount)
 
 	log.Print("[INFO] Inserting Redis data after increasing Memory load... ")
 
+	// Measure the time it takes to put the sample data into redis with the RAM load
 	start = time.Now()
 
 	bulkSet(sampleData)
@@ -150,6 +162,7 @@ func MemoryStressTest(config *config.Config, infrastructure infrastructure.Infra
 		del(key)
 	}
 
+	// Decrease RAM load
 	for _, vm := range deployment.VMs {
 		log.Printf("[INFO] Decrease Memory load of VM %s/%s...", vm.ServiceName, vm.ID)
 

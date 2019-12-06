@@ -100,7 +100,7 @@ func Failover(config *config.Config, infrastructure infrastructure.Infrastructur
 			infrastructure.Start(vm.ID)
 		}
 	}
-	
+
 	// Check if the data is still there
 	if bulkSetSuccessful(sampleData) {
 		log.Printf("[INFO] Data previously put into redis %v", color.GreenString("still exists"))
@@ -123,11 +123,14 @@ func FillAllVM(config *config.Config, infrastructure infrastructure.Infrastructu
 		deployment = infrastructure.GetDeployment()
 	}
 
+	// Get the path to store big data files to from the test specific properties in
+	// the configuration.yml
 	path := getTestProperties(config, "storage")["path"]
 	filename := fmt.Sprintf("%s.txt", randomString(rand.Intn(9)+1))
 
 	vms := deployment.VMs
 
+	// Create big dump files to fill the vms persistent disk
 	for _, vm := range vms {
 		size := 1024
 
@@ -151,6 +154,7 @@ func FillAllVM(config *config.Config, infrastructure infrastructure.Infrastructu
 		log.Printf("[INFO] Inserting data to Redis %v", color.RedString("failed"))
 	}
 
+	// Remove the big data files to free the persistent disc space again
 	for _, vm := range vms {
 		log.Printf("[INFO] Cleanup storage of VM %s/%s...", vm.ServiceName, vm.ID)
 

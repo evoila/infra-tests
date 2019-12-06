@@ -19,6 +19,7 @@ var healthy = true
 var deployment infrastructure.Deployment
 
 func init() {
+	// Initialize math/rand
 	rand.Seed(time.Now().UnixNano())
 }
 
@@ -52,6 +53,7 @@ func openRedisConnection(config *config.Config, deployment infrastructure.Deploy
 	newRedisClient(&redisConfig)
 }
 
+// Get the test specific config properties for a given test
 func getTestProperties(config *config.Config, testName string) map[string]string{
 	tests := config.Testing.Tests
 
@@ -64,6 +66,7 @@ func getTestProperties(config *config.Config, testName string) map[string]string
 	return nil
 }
 
+// Create a given number of random key-value-pairs
 func createSampleDataSet(amount int) map[string]string {
 	dataSet := make(map[string]string)
 
