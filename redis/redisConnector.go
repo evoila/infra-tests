@@ -1,9 +1,9 @@
 package main
 
 import (
-	"fmt"
 	"github.com/go-redis/redis"
 	"log"
+	"strings"
 	"time"
 )
 
@@ -82,10 +82,16 @@ func get(key string) string {
 }
 
 func del (key string) {
+	var err error
+
 	if isCluster {
-		goRedisClusterClient.Del(key)
+		_, err = goRedisClusterClient.Del(key).Result()
 	} else {
-		goRedisSingleNodeClient.Del(key)
+		_, err = goRedisSingleNodeClient.Del(key).Result()
+	}
+
+	if err != nil {
+		del(key)
 	}
 }
 
@@ -114,6 +120,32 @@ func bulkSetSuccessful(values map[string]string) bool {
 		}
 	}
 	return true
+}
+
+func isClusterHealthy() bool {
+	var values string
+	var err error
+	searchedValue := "cluster_state:"
+
+	if isCluster {
+		values, err = goRedisClusterClient.ClusterInfo().Result()
+	} else {
+		values, err = goRedisSingleNodeClient.ClusterInfo().Result()
+	}
+
+	if err != nil {
+		log.Printf("[ERROR] %v", err)
+	}
+
+	index := strings.Index(values, searchedValue) + len(searchedValue)
+
+	state := string(values[index]) + string(values[index+1])
+
+	if state == "ok" {
+		return true
+	}
+
+	return false
 }
 
 func deletionSuccessful(values map[string]string) bool {

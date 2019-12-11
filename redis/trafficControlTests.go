@@ -68,10 +68,6 @@ func PackageLoss(config *config.Config, infrastructure infrastructure.Infrastruc
 		infrastructure.RemoveTrafficControl(vm.ID)
 	}
 
-	for clusterHealthy := isClusterHealthy(); clusterHealthy; clusterHealthy = false {
-		time.Sleep(5 * time.Second)
-	}
-
 	for key := range sampleData {
 		del(key)
 	}
@@ -153,10 +149,6 @@ func NetworkDelay(config *config.Config, infrastructure infrastructure.Infrastru
 		log.Printf("[INFO] Removing Traffic Shaping on VM %s/%s", vm.ServiceName, vm.ID)
 
 		infrastructure.RemoveTrafficControl(vm.ID)
-	}
-
-	for clusterHealthy := isClusterHealthy(); clusterHealthy; clusterHealthy = false {
-		time.Sleep(5 * time.Second)
 	}
 
 	for key := range sampleData {
