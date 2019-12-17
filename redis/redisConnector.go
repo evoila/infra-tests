@@ -86,11 +86,21 @@ func del (key string) {
 
 	if isCluster {
 		_, err = goRedisClusterClient.Del(key).Result()
+		if err != nil {
+			log.Printf("[INFO] Cannot delete data: %s", err.Error())
+			log.Printf("[INFO] Retry deletion")
+		}
 	} else {
 		_, err = goRedisSingleNodeClient.Del(key).Result()
 	}
 
 	if err != nil {
+		del(key)
+	}
+}
+
+func bulkDelete(data map[string]string) {
+	for key := range data {
 		del(key)
 	}
 }

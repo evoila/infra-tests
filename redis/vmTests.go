@@ -11,7 +11,7 @@ import (
 )
 
 // @Info
-func DeploymentInfo(config *config.Config, infrastructure infrastructure.Infrastructure) {
+func DeploymentInfo(config *config.Config, infrastructure infrastructure.Infrastructure) bool {
 	fmt.Printf(InfoColor, "\n##### Deployment Info #####\n")
 
 	deployment = infrastructure.GetDeployment()
@@ -29,10 +29,12 @@ func DeploymentInfo(config *config.Config, infrastructure infrastructure.Infrast
 		log.Printf("\tDisk Usage: \t%v%%", vm.DiskUsagePercentage)
 		log.Printf("\t----------------------------")
 	}
+
+	return true
 }
 
 // @Health
-func IsDeploymentRunning(config *config.Config, infrastructure infrastructure.Infrastructure) {
+func IsDeploymentRunning(config *config.Config, infrastructure infrastructure.Infrastructure) bool {
 	fmt.Printf(InfoColor, "\n##### Health Test #####\n")
 
 	if deployment.DeploymentName == "" {
@@ -56,10 +58,12 @@ func IsDeploymentRunning(config *config.Config, infrastructure infrastructure.In
 		healthy = false
 		log.Printf("[INFO] Deployment %v is %v", config.DeploymentName, color.RedString("not healthy"))
 	}
+
+	return healthy
 }
 
 // @Failover
-func Failover(config *config.Config, infrastructure infrastructure.Infrastructure) {
+func Failover(config *config.Config, infrastructure infrastructure.Infrastructure) bool {
 	fmt.Printf(InfoColor, "\n##### Failover Test #####\n")
 
 	dataAmount := 100
@@ -73,14 +77,14 @@ func Failover(config *config.Config, infrastructure infrastructure.Infrastructur
 
 	openRedisConnection(config, deployment)
 	defer shutdown()
+	defer bulkDelete(sampleData)
 
 	log.Print("[INFO] Inserting Redis data... ")
 	bulkSet(sampleData)
 
-	if bulkSetSuccessful(sampleData) {
-		log.Printf("[INFO] Inserting data to Redis %v", color.GreenString("succeeded"))
-	}  else {
-		log.Printf("[INFO] Inserting data to Redis %v", color.RedString("failed"))
+	if infrastructure.AssertTrue(bulkSetSuccessful(sampleData)) != true {
+		log.Printf(color.RedString( "[ERROR] Failover test failed"))
+		return false
 	}
 
 	vms := deployment.VMs
@@ -102,19 +106,17 @@ func Failover(config *config.Config, infrastructure infrastructure.Infrastructur
 	}
 
 	// Check if the data is still there
-	if bulkSetSuccessful(sampleData) {
-		log.Printf("[INFO] Data previously put into redis %v", color.GreenString("still exists"))
-	}  else {
-		log.Printf("[INFO] Data previously put into redis %v", color.RedString("does not exist anymore"))
+	if infrastructure.AssertTrue(bulkSetSuccessful(sampleData)) != true {
+		log.Printf(color.RedString( "[ERROR] Failover test failed"))
+		return false
 	}
 
-	for key := range sampleData {
-		del(key)
-	}
+	log.Printf(color.GreenString( "[INFO] Failover test succeeded"))
+	return true
 }
 
 // @Storage
-func FillAllVM(config *config.Config, infrastructure infrastructure.Infrastructure) {
+func FillAllVM(config *config.Config, infrastructure infrastructure.Infrastructure) bool {
 	fmt.Printf(InfoColor, "\n##### Storage Test For All VMs #####\n")
 
 	dataAmount := 100
@@ -139,31 +141,33 @@ func FillAllVM(config *config.Config, infrastructure infrastructure.Infrastructu
 		infrastructure.FillDisk(size, path, filename, vm.ID)
 	}
 
-	openRedisConnection(config, deployment)
-	defer shutdown()
-
-	// Write data to redis & check if it was stored correctly
 	sampleData := createSampleDataSet(dataAmount)
 
+	openRedisConnection(config, deployment)
+	defer shutdown()
+	defer bulkDelete(sampleData)
+	defer cleanup(vms, infrastructure, path, filename)
+
+	// Write data to redis & check if it was stored correctly
 	log.Print("[INFO] Inserting Redis data... ")
 	bulkSet(sampleData)
 
-	if bulkSetSuccessful(sampleData) {
-		log.Printf("[INFO] Inserting data to Redis %v", color.GreenString("succeeded"))
-	}  else {
-		log.Printf("[INFO] Inserting data to Redis %v", color.RedString("failed"))
+	if infrastructure.AssertFalse(bulkSetSuccessful(sampleData)) != true {
+		log.Printf(color.RedString("[ERROR] Storage test failed"))
+		return false
 	}
 
+	time.Sleep(5 * time.Second)
+
+	log.Printf(color.GreenString("[INFO] Storage test succeeded"))
+	return true
+}
+
+func cleanup(vms []infrastructure.VM, infrastructure infrastructure.Infrastructure, path string, filename string) {
 	// Remove the big data files to free the persistent disc space again
 	for _, vm := range vms {
 		log.Printf("[INFO] Cleanup storage of VM %s/%s...", vm.ServiceName, vm.ID)
 
 		infrastructure.CleanupDisk(path, filename, vm.ID)
-	}
-
-	time.Sleep(5 * time.Second)
-
-	for key := range sampleData {
-		del(key)
 	}
 }

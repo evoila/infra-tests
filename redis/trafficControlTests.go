@@ -10,7 +10,7 @@ import (
 )
 
 // @Package Loss
-func PackageLoss(config *config.Config, infrastructure infrastructure.Infrastructure) {
+func PackageLoss(config *config.Config, infrastructure infrastructure.Infrastructure) bool {
 	fmt.Printf(InfoColor, "\n##### Package Loss Test #####\n")
 
 	// Amount of test data & package loss percentage
@@ -27,9 +27,10 @@ func PackageLoss(config *config.Config, infrastructure infrastructure.Infrastruc
 	directorIp := getTestProperties(config, "package loss")["directorIp"]
 
 	tc := infrastructure.SimulatePackageLoss(lossPercentage, 0)
+	vms := deployment.VMs
 
 	// Add package loss to every vm
-	for _, vm := range deployment.VMs {
+	for _, vm := range vms{
 		log.Printf("[INFO] Adding %d%% package loss on VM %s/%s", lossPercentage, vm.ServiceName, vm.ID)
 
 		infrastructure.AddTrafficControl(vm.ID, directorIp, tc)
@@ -42,6 +43,8 @@ func PackageLoss(config *config.Config, infrastructure infrastructure.Infrastruc
 	log.Print("[INFO] Inserting Redis data... ")
 
 	sampleData := createSampleDataSet(dataAmount)
+	defer bulkDelete(sampleData)
+	defer removeTrafficControl(vms, infrastructure)
 
 	bulkSet(sampleData)
 
@@ -61,20 +64,11 @@ func PackageLoss(config *config.Config, infrastructure infrastructure.Infrastruc
 		color.GreenString(fmt.Sprintf("%0.2f%%", succeeded/float64(dataAmount)*100)),
 		color.RedString(fmt.Sprintf("%0.2f%%", failed/float64(dataAmount)*100)))
 
-	// Remove package loss from all vms again
-	for _, vm := range deployment.VMs {
-		log.Printf("[INFO] Removing Traffic Shaping on VM %s/%s", vm.ServiceName, vm.ID)
-
-		infrastructure.RemoveTrafficControl(vm.ID)
-	}
-
-	for key := range sampleData {
-		del(key)
-	}
+	return true
 }
 
 // @Network Delay
-func NetworkDelay(config *config.Config, infrastructure infrastructure.Infrastructure) {
+func NetworkDelay(config *config.Config, infrastructure infrastructure.Infrastructure) bool {
 	fmt.Printf(InfoColor, "\n##### Network Delay Test #####\n")
 
 	// Amount of test data & package loss percentage
@@ -89,6 +83,7 @@ func NetworkDelay(config *config.Config, infrastructure infrastructure.Infrastru
 
 	openRedisConnection(config, deployment)
 	defer shutdown()
+	defer bulkDelete(sampleData)
 
 	log.Print("[INFO] Inserting Redis data before traffic shaping... ")
 
@@ -101,14 +96,9 @@ func NetworkDelay(config *config.Config, infrastructure infrastructure.Infrastru
 
 	log.Printf("[INFO] Inserting Redis data took %s", elapsed)
 
-	if bulkSetSuccessful(sampleData) {
-		log.Printf("[INFO] Inserting data to Redis %v", color.GreenString("succeeded"))
-	}  else {
-		log.Printf("[INFO] Inserting data to Redis %v", color.RedString("failed"))
-	}
-
-	for key := range sampleData {
-		del(key)
+	if infrastructure.AssertTrue(bulkSetSuccessful(sampleData)) != true {
+		log.Printf(color.RedString("[ERROR] Network Delay test failed"))
+		return false
 	}
 
 	// If you add a high network delay to a bosh VM the director will think that it failed
@@ -117,15 +107,18 @@ func NetworkDelay(config *config.Config, infrastructure infrastructure.Infrastru
 	directorIp := getTestProperties(config, "network delay")["directorIp"]
 
 	tc := infrastructure.SimulateNetworkDelay(delay, 0)
+	vms := deployment.VMs
 
 	// Add network delay to every vm
-	for _, vm := range deployment.VMs {
+	for _, vm := range vms {
 		log.Printf("[INFO] Adding %dms delay on VM %s/%s", delay, vm.ServiceName, vm.ID)
 
 		infrastructure.AddTrafficControl(vm.ID, directorIp, tc)
 	}
 
 	sampleData = createSampleDataSet(dataAmount)
+	defer bulkDelete(sampleData)
+	defer removeTrafficControl(vms, infrastructure)
 
 	log.Print("[INFO] Inserting Redis data after traffic shaping... ")
 
@@ -138,20 +131,20 @@ func NetworkDelay(config *config.Config, infrastructure infrastructure.Infrastru
 
 	log.Printf("[INFO] Inserting Redis data took %s", elapsed)
 
-	if bulkSetSuccessful(sampleData) {
-		log.Printf("[INFO] Inserting data to Redis %v", color.GreenString("succeeded"))
-	}  else {
-		log.Printf("[INFO] Inserting data to Redis %v", color.RedString("failed"))
+	if infrastructure.AssertTrue(bulkSetSuccessful(sampleData)) != true {
+		log.Printf(color.RedString("[ERROR] Network Delay test failed"))
+		return false
 	}
 
+	log.Printf(color.GreenString("[INFO] Network Delay test succeeded"))
+	return true
+}
+
+func removeTrafficControl(vms []infrastructure.VM, infrastructure infrastructure.Infrastructure) {
 	// Remove network delay from all vms
 	for _, vm := range deployment.VMs {
 		log.Printf("[INFO] Removing Traffic Shaping on VM %s/%s", vm.ServiceName, vm.ID)
 
 		infrastructure.RemoveTrafficControl(vm.ID)
-	}
-
-	for key := range sampleData {
-		del(key)
 	}
 }

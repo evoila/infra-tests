@@ -12,7 +12,6 @@ import (
 const (
 	letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	InfoColor    = "\033[1;34m%s\033[0m"
-	WarningColor = "\033[1;33m%s\033[0m"
 )
 
 var healthy = true

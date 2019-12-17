@@ -10,7 +10,7 @@ import (
 )
 
 // @CPU Load
-func CPUStressTest(config *config.Config, infrastructure infrastructure.Infrastructure) {
+func CPUStressTest(config *config.Config, infrastructure infrastructure.Infrastructure) bool {
 	fmt.Printf(InfoColor, "\n##### CPU Stress Test #####\n")
 
 	if deployment.DeploymentName == "" {
@@ -25,6 +25,7 @@ func CPUStressTest(config *config.Config, infrastructure infrastructure.Infrastr
 
 	openRedisConnection(config, deployment)
 	defer shutdown()
+	defer bulkDelete(sampleData)
 
 	log.Print("[INFO] Inserting Redis data before increasing CPU load... ")
 
@@ -35,20 +36,17 @@ func CPUStressTest(config *config.Config, infrastructure infrastructure.Infrastr
 
 	elapsed := time.Since(start)
 
+	if infrastructure.AssertTrue(bulkSetSuccessful(sampleData)) != true {
+		log.Printf(color.RedString( "[ERROR] CPU stress test failed"))
+		return false
+	}
+
 	log.Printf("[INFO] Inserting Redis data took %s", elapsed)
 
-	if bulkSetSuccessful(sampleData) {
-		log.Printf("[INFO] Inserting data to Redis %v", color.GreenString("succeeded"))
-	}  else {
-		log.Printf("[INFO] Inserting data to Redis %v", color.RedString("failed"))
-	}
-
-	for key := range sampleData {
-		del(key)
-	}
+	vms := deployment.VMs
 
 	// Increase CPU load
-	for _, vm := range deployment.VMs {
+	for _, vm := range vms {
 		log.Printf("[INFO] Increase CPU load of VM %s/%s up to %d%%...", vm.ServiceName, vm.ID, percentage)
 
 		go infrastructure.StartCPULoad(vm.ID, percentage)
@@ -58,9 +56,10 @@ func CPUStressTest(config *config.Config, infrastructure infrastructure.Infrastr
 	time.Sleep(30 * time.Second)
 
 	sampleData = createSampleDataSet(dataAmount)
+	defer bulkDelete(sampleData)
+	defer stopStress(vms, infrastructure)
 
 	log.Print("[INFO] Inserting Redis data after increasing CPU load... ")
-
 
 	// Measure the time it takes to put the sample data into redis with the CPU load
 	start = time.Now()
@@ -69,30 +68,19 @@ func CPUStressTest(config *config.Config, infrastructure infrastructure.Infrastr
 
 	elapsed = time.Since(start)
 
+	if infrastructure.AssertTrue(bulkSetSuccessful(sampleData)) != true {
+		log.Printf(color.RedString( "[ERROR] CPU stress test failed"))
+		return false
+	}
+
 	log.Printf("[INFO] Inserting Redis data took %s", elapsed)
 
-	if bulkSetSuccessful(sampleData) {
-		log.Printf("[INFO] Inserting data to Redis %v", color.GreenString("succeeded"))
-	}  else {
-		log.Printf("[INFO] Inserting data to Redis %v", color.RedString("failed"))
-	}
-
-	for key := range sampleData {
-		del(key)
-	}
-
-	// Decrease CPU load
-	for _, vm := range deployment.VMs {
-		log.Printf("[INFO] Decrease CPU load of VM %s/%s...", vm.ServiceName, vm.ID)
-
-		go infrastructure.StopStress(vm.ID)
-	}
-
-	time.Sleep(30 * time.Second)
+	log.Printf(color.GreenString("[INFO] CPU stress test succeeded"))
+	return true
 }
 
 // @RAM Load
-func MemoryStressTest(config *config.Config, infrastructure infrastructure.Infrastructure) {
+func MemoryStressTest(config *config.Config, infrastructure infrastructure.Infrastructure) bool {
 	fmt.Printf(InfoColor, "\n##### Memory Stress Test #####\n")
 
 	if deployment.DeploymentName == "" {
@@ -107,6 +95,7 @@ func MemoryStressTest(config *config.Config, infrastructure infrastructure.Infra
 
 	openRedisConnection(config, deployment)
 	defer shutdown()
+	defer bulkDelete(sampleData)
 
 	log.Print("[INFO] Inserting Redis data before increasing Memory load... ")
 
@@ -117,20 +106,17 @@ func MemoryStressTest(config *config.Config, infrastructure infrastructure.Infra
 
 	elapsed := time.Since(start)
 
+	if infrastructure.AssertTrue(bulkSetSuccessful(sampleData)) != true {
+		log.Printf(color.RedString( "[ERROR] Memory stress test failed"))
+		return false
+	}
+
 	log.Printf("[INFO] Inserting Redis data took %s", elapsed)
 
-	if bulkSetSuccessful(sampleData) {
-		log.Printf("[INFO] Inserting data to Redis %v", color.GreenString("succeeded"))
-	}  else {
-		log.Printf("[INFO] Inserting data to Redis %v", color.RedString("failed"))
-	}
-
-	for key := range sampleData {
-		del(key)
-	}
+	vms := deployment.VMs
 
 	// Increase ram load
-	for _, vm := range deployment.VMs {
+	for _, vm := range vms {
 		log.Printf("[INFO] Increase Memory load of VM %s/%s up to %d%%...", vm.ServiceName, vm.ID, percentage)
 
 		go infrastructure.StartMemLoad(vm.ID, float64(percentage))
@@ -140,6 +126,8 @@ func MemoryStressTest(config *config.Config, infrastructure infrastructure.Infra
 	time.Sleep(30 * time.Second)
 
 	sampleData = createSampleDataSet(dataAmount)
+	defer bulkDelete(sampleData)
+	defer stopStress(vms, infrastructure)
 
 	log.Print("[INFO] Inserting Redis data after increasing Memory load... ")
 
@@ -150,21 +138,20 @@ func MemoryStressTest(config *config.Config, infrastructure infrastructure.Infra
 
 	elapsed = time.Since(start)
 
+	if infrastructure.AssertTrue(bulkSetSuccessful(sampleData)) != true {
+		log.Printf(color.RedString(  "[ERROR] Memory stress test failed"))
+		return false
+	}
+
 	log.Printf("[INFO] Inserting Redis data took %s", elapsed)
 
-	if bulkSetSuccessful(sampleData) {
-		log.Printf("[INFO] Inserting data to Redis %v", color.GreenString("succeeded"))
-	}  else {
-		log.Printf("[INFO] Inserting data to Redis %v", color.RedString("failed"))
-	}
+	log.Printf(color.GreenString("[INFO] Memory stress test succeeded"))
+	return true
+}
 
-	for key := range sampleData {
-		del(key)
-	}
-
-	// Decrease RAM load
+func stopStress(vms []infrastructure.VM, infrastructure infrastructure.Infrastructure) {
 	for _, vm := range deployment.VMs {
-		log.Printf("[INFO] Decrease Memory load of VM %s/%s...", vm.ServiceName, vm.ID)
+		log.Printf("[INFO] Remove stress of VM %s/%s...", vm.ServiceName, vm.ID)
 
 		go infrastructure.StopStress(vm.ID)
 	}
