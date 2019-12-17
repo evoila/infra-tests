@@ -7,6 +7,7 @@ import(
 )
 
 // @Test
-func MyTest(config *config.Config, infrastructure infrastructure.Infrastructure) {
+func MyTest(config *config.Config, infrastructure infrastructure.Infrastructure) bool {
 	fmt.Println("My very own Test!")
+	return true
 }
