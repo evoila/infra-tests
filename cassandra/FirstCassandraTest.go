@@ -7,7 +7,7 @@ import (
 )
 
 // @Test
-func TestConnection(config *config.Config, infrastructure infrastructure.Infrastructure) {
+func TestConnection(config *config.Config, infrastructure infrastructure.Infrastructure) bool {
 
 	deployment := infrastructure.GetDeployment()
 
@@ -25,11 +25,7 @@ func TestConnection(config *config.Config, infrastructure infrastructure.Infrast
 		Username: config.Service.Credentials.Username,
 		Password: config.Service.Credentials.Password}
 
-	session, err := cluster.CreateSession()
+	_, err := cluster.CreateSession()
 
-	if err != nil {
-		panic(err)
-	}
-
-	defer session.Close()
+	return err != nil
 }
