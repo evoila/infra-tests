@@ -20,29 +20,49 @@ func TestConnection(config *config.Config, infrastructure infrastructure.Infrast
 	session, err := connectToCluster(config, hosts...)
 
 	if err != nil {
-		print("Error when trying to connect to cassandra! " + err.Error())
+		println("Error when trying to connect to cassandra! " + err.Error())
 	}
 
 	defer session.Close()
 
-	err = createKeyspace(session)
-
+	keyspace := "cassandraTest"
+	err = createKeyspace(session, keyspace)
 	if err != nil {
-		print("Error when trying to create keyspace!")
+		println("Error when trying to create " + keyspace)
 	}
+	println("Created keyspace " + keyspace)
 
-	err = dropKeyspace(session)
+	keyspaceSeasion, err := connectToKeyspace(config, hosts, keyspace)
+	if err != nil {
+		println("Error when trying to connect to newly created keyspace " + keyspace)
+	}
+	keyspaceSeasion.Close()
+
+	err = dropKeyspace(session, keyspace)
+	println("Droped keyspace " + keyspace)
 
 	return err == nil
 }
 
-func createKeyspace(session *gocql.Session) error {
-	return session.Query("CREATE KEYSPACE testkeyspace " +
-		"WITH  replication = { 'class' : 'SimpleStrategy', 'replication_factor' : 1 };").Exec()
+func createKeyspace(session *gocql.Session, keyspace string) error {
+	return session.Query("CREATE KEYSPACE" + keyspace +
+		" WITH  replication = { 'class' : 'SimpleStrategy', 'replication_factor' : 1 };").Exec()
 }
 
-func dropKeyspace(session *gocql.Session) error {
-	return session.Query("DROP KEYSPACE IF EXISTS testkeyspace;").Exec()
+func dropKeyspace(session *gocql.Session, keyspace string) error {
+	return session.Query("DROP KEYSPACE IF EXISTS " + keyspace + ";").Exec()
+}
+
+func connectToKeyspace(config *config.Config, keyspace string, hosts ...string) (*gocql.Session, error) {
+	cluster := gocql.NewCluster(hosts...)
+	cluster.Port = config.Service.Port
+	cluster.Keyspace = keyspace
+	cluster.Authenticator = gocql.PasswordAuthenticator{
+		Username: config.Service.Credentials.Username,
+		Password: config.Service.Credentials.Password,
+	}
+
+	return cluster.CreateSession()
 }
 
 func connectToCluster(config *config.Config, hosts ...string) (*gocql.Session, error) {
