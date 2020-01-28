@@ -1,4 +1,4 @@
-package cassandra
+package main
 
 import (
 	"github.com/evoila/infraTESTure/config"
