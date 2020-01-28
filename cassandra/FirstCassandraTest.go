@@ -6,7 +6,7 @@ import (
 	"github.com/gocql/gocql"
 )
 
-// @Test
+// @TestConnection
 func TestConnection(config *config.Config, infrastructure infrastructure.Infrastructure) bool {
 
 	deployment := infrastructure.GetDeployment()
