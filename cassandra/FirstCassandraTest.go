@@ -26,5 +26,9 @@ func TestConnection(config *config.Config, infrastructure infrastructure.Infrast
 
 	_, err := cluster.CreateSession()
 
-	return err != nil
+	if err != nil {
+		print("Error when trying to connect to cassandra! " + err.Error())
+	}
+
+	return err == nil
 }
