@@ -20,7 +20,6 @@ func TestConnection(config *config.Config, infrastructure infrastructure.Infrast
 	}
 	cluster := gocql.NewCluster(hosts...)
 	cluster.Port = config.Service.Port
-	cluster.Keyspace = config.Service.Name
 	cluster.Authenticator = gocql.PasswordAuthenticator{
 		Username: config.Service.Credentials.Username,
 		Password: config.Service.Credentials.Password}
