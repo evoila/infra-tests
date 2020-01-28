@@ -60,10 +60,10 @@ func TestConnection(config *config.Config, infrastructure infrastructure.Infrast
 }
 
 func createTestTable(session *gocql.Session) error {
-	return session.Query("CREATE TABLE (test" +
-		"test_field_key int PRIMARY_KEY," +
-		"test_field_one text," +
-		"test_field_two text);").Exec()
+	return session.Query("CREATE TABLE test" +
+		"(id int PRIMARY_KEY, " +
+		"some text, " +
+		"field text);").Exec()
 }
 
 func dropTestTable(session *gocql.Session) error {
