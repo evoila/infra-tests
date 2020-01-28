@@ -45,7 +45,7 @@ func TestConnection(config *config.Config, infrastructure infrastructure.Infrast
 }
 
 func createKeyspace(session *gocql.Session, keyspace string) error {
-	return session.Query("CREATE KEYSPACE" + keyspace +
+	return session.Query("CREATE KEYSPACE " + keyspace +
 		" WITH  replication = { 'class' : 'SimpleStrategy', 'replication_factor' : 1 };").Exec()
 }
 
