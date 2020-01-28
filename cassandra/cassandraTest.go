@@ -30,7 +30,6 @@ func TestConnection(config *config.Config, infrastructure infrastructure.Infrast
 		println("Error when trying to create " + keyspace)
 		return false
 	}
-	defer dropKeyspace(session, keyspace)
 	println("Created keyspace " + keyspace)
 
 	keyspaceSession, err := connectToKeyspace(config, keyspace, hosts...)
@@ -46,24 +45,19 @@ func TestConnection(config *config.Config, infrastructure infrastructure.Infrast
 		println("Error when trying to create table test.")
 		return false
 	}
+
 	println("Created table with name test")
 
-	/*
-		err = dropKeyspace(session, keyspace)
-		if err != nil {
-			println("Error when trying to drop keyspace " + keyspace)
-			return false
-		}
-	*/
-
+	err = dropKeyspace(session, keyspace)
+	if err != nil {
+		println("Error when trying to drop keyspace " + keyspace)
+		return false
+	}
 	return true
 }
 
 func createTestTable(session *gocql.Session) error {
-	return session.Query("CREATE TABLE test" +
-		"(id int PRIMARY_KEY, " +
-		"some text, " +
-		"field text);").Exec()
+	return session.Query("CREATE TABLE test (id int PRIMARY_KEY, some text, field text);").Exec()
 }
 
 func dropTestTable(session *gocql.Session) error {
