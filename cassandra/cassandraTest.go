@@ -57,7 +57,7 @@ func TestConnection(config *config.Config, infrastructure infrastructure.Infrast
 }
 
 func createTestTable(session *gocql.Session) error {
-	return session.Query("CREATE TABLE test (id int PRIMARY_KEY, some text, field text);").Exec()
+	return session.Query("CREATE TABLE test (id int PRIMARY KEY , some text, field text);").Exec()
 }
 
 func dropTestTable(session *gocql.Session) error {
