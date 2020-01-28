@@ -23,14 +23,14 @@ func TestConnection(config *config.Config, infrastructure infrastructure.Infrast
 		println("Error when trying to connect to cassandra! " + err.Error())
 	}
 
-	defer session.Close()
-
 	keyspace := "cassandratest"
+	defer session.Close()
 	err = createKeyspace(session, keyspace)
 	if err != nil {
 		println("Error when trying to create " + keyspace)
 		return false
 	}
+	defer dropKeyspace(session, keyspace)
 	println("Created keyspace " + keyspace)
 
 	keyspaceSession, err := connectToKeyspace(config, keyspace, hosts...)
@@ -48,29 +48,22 @@ func TestConnection(config *config.Config, infrastructure infrastructure.Infrast
 	}
 	println("Created table with name test")
 
-	err = dropTestTable(keyspaceSession)
-	if err != nil {
-		println("Error when trying to drop table test.")
-		return false
-	}
-	println("Dropped table with name test")
-
-	err = dropKeyspace(session, keyspace)
-	if err != nil {
-		println("Error when trying to drop keyspace " + keyspace)
-		return false
-	}
-
-	println("Dropped keyspace " + keyspace)
+	/*
+		err = dropKeyspace(session, keyspace)
+		if err != nil {
+			println("Error when trying to drop keyspace " + keyspace)
+			return false
+		}
+	*/
 
 	return true
 }
 
 func createTestTable(session *gocql.Session) error {
-	return session.Query("CREATE TABLE test" +
-		"test_field_key int PRIMARY_KEY" +
+	return session.Query("CREATE TABLE (test" +
+		"test_field_key int PRIMARY_KEY," +
 		"test_field_one text," +
-		"test_field_two text").Exec()
+		"test_field_two text);").Exec()
 }
 
 func dropTestTable(session *gocql.Session) error {
