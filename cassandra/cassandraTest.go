@@ -25,7 +25,7 @@ func TestConnection(config *config.Config, infrastructure infrastructure.Infrast
 
 	defer session.Close()
 
-	keyspace := "cassandraTest"
+	keyspace := "cassandratest"
 	err = createKeyspace(session, keyspace)
 	if err != nil {
 		println("Error when trying to create " + keyspace)
@@ -35,6 +35,7 @@ func TestConnection(config *config.Config, infrastructure infrastructure.Infrast
 	keyspaceSession, err := connectToKeyspace(config, keyspace, hosts...)
 	if err != nil {
 		println("Error when trying to connect to newly created keyspace " + keyspace)
+		return false
 	}
 	keyspaceSession.Close()
 
@@ -45,8 +46,8 @@ func TestConnection(config *config.Config, infrastructure infrastructure.Infrast
 }
 
 func createKeyspace(session *gocql.Session, keyspace string) error {
-	return session.Query("CREATE KEYSPACE " + keyspace +
-		" WITH  replication = { 'class' : 'SimpleStrategy', 'replication_factor' : 1 };").Exec()
+	return session.Query("CREATE KEYSPACE " + keyspace + " WITH " +
+		"replication = { 'class' : 'SimpleStrategy', 'replication_factor' : 1 };").Exec()
 }
 
 func dropKeyspace(session *gocql.Session, keyspace string) error {
