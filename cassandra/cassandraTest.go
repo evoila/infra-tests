@@ -32,14 +32,14 @@ func TestConnection(config *config.Config, infrastructure infrastructure.Infrast
 	}
 	println("Created keyspace " + keyspace)
 
-	keyspaceSeasion, err := connectToKeyspace(config, keyspace, hosts...)
+	keyspaceSession, err := connectToKeyspace(config, keyspace, hosts...)
 	if err != nil {
 		println("Error when trying to connect to newly created keyspace " + keyspace)
 	}
-	keyspaceSeasion.Close()
+	keyspaceSession.Close()
 
 	err = dropKeyspace(session, keyspace)
-	println("Droped keyspace " + keyspace)
+	println("Dropped keyspace " + keyspace)
 
 	return err == nil
 }
