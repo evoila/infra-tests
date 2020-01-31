@@ -58,8 +58,6 @@ func IsDeploymentRunning(config *config.Config, infrastructure infrastructure.In
 
 	return healthy
 }
-"log"
-)
 
 // @Info
 func DeploymentInfo(config *config.Config, infrastructure infrastructure.Infrastructure) bool {

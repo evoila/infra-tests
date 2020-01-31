@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"github.com/evoila/infraTESTure/config"
+	"github.com/evoila/infraTESTure/infrastructure"
 	"github.com/gocql/gocql"
 	"strconv"
 	"time"
@@ -77,3 +78,11 @@ type TestObject struct {
 	some  string
 	field string
 }
+
+const (
+	letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	InfoColor    = "\033[1;34m%s\033[0m"
+)
+
+var deployment infrastructure.Deployment
+var healthy = true
