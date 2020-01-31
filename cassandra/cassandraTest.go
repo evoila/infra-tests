@@ -3,7 +3,6 @@ package main
 import (
 	"github.com/evoila/infraTESTure/config"
 	"github.com/evoila/infraTESTure/infrastructure"
-	"github.com/gocql/gocql"
 )
 
 // @TestConnection
@@ -54,44 +53,4 @@ func TestConnection(config *config.Config, infrastructure infrastructure.Infrast
 		return false
 	}
 	return true
-}
-
-func createTestTable(session *gocql.Session) error {
-	return session.Query("CREATE TABLE test (id int PRIMARY KEY , some text, field text);").Exec()
-}
-
-func dropTestTable(session *gocql.Session) error {
-	return session.Query("DROP TABLE test").Exec()
-}
-
-func createKeyspace(session *gocql.Session, keyspace string) error {
-	return session.Query("CREATE KEYSPACE " + keyspace + " WITH " +
-		"replication = { 'class' : 'SimpleStrategy', 'replication_factor' : 1 };").Exec()
-}
-
-func dropKeyspace(session *gocql.Session, keyspace string) error {
-	return session.Query("DROP KEYSPACE IF EXISTS " + keyspace + ";").Exec()
-}
-
-func connectToKeyspace(config *config.Config, keyspace string, hosts ...string) (*gocql.Session, error) {
-	cluster := gocql.NewCluster(hosts...)
-	cluster.Port = config.Service.Port
-	cluster.Keyspace = keyspace
-	cluster.Authenticator = gocql.PasswordAuthenticator{
-		Username: config.Service.Credentials.Username,
-		Password: config.Service.Credentials.Password,
-	}
-
-	return cluster.CreateSession()
-}
-
-func connectToCluster(config *config.Config, hosts ...string) (*gocql.Session, error) {
-	cluster := gocql.NewCluster(hosts...)
-	cluster.Port = config.Service.Port
-	cluster.Authenticator = gocql.PasswordAuthenticator{
-		Username: config.Service.Credentials.Username,
-		Password: config.Service.Credentials.Password,
-	}
-
-	return cluster.CreateSession()
 }
