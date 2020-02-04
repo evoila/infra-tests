@@ -79,10 +79,10 @@ func dropKeyspace(session *gocql.Session, keyspace string) error {
 
 func connectToKeyspace(keyspace string) (*gocql.Session, error) {
 	hosts := getHostsFromDeployment()
-	return connectToKeyspaceWithHostList(keyspace, hosts...)
+	return connectToKeyspaceWithHostList(keyspace, hosts)
 }
 
-func connectToKeyspaceWithHostList(keyspace string, hosts ...string) (*gocql.Session, error) {
+func connectToKeyspaceWithHostList(keyspace string, hosts []string) (*gocql.Session, error) {
 	cluster := gocql.NewCluster(hosts...)
 	cluster.Port = configuration.Service.Port
 	cluster.Keyspace = keyspace
@@ -101,10 +101,10 @@ func connectToCluster() (*gocql.Session, error) {
 		return nil, errors.New("Hosts cannot be nil!")
 	}
 
-	return connectToClusterWithHostList(hosts...)
+	return connectToClusterWithHostList(hosts)
 }
 
-func connectToClusterWithHostList(hosts ...string) (*gocql.Session, error) {
+func connectToClusterWithHostList(hosts []string) (*gocql.Session, error) {
 	cluster := gocql.NewCluster(hosts...)
 	cluster.Port = configuration.Service.Port
 	cluster.Timeout = 20 * time.Second
