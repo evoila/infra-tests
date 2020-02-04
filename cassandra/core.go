@@ -97,6 +97,10 @@ func connectToKeyspaceWithHostList(keyspace string, hosts ...string) (*gocql.Ses
 
 func connectToCluster() (*gocql.Session, error) {
 	hosts := getHostsFromDeployment()
+	if hosts == nil {
+		return nil, errors.New("Hosts cannot be nil!")
+	}
+
 	return connectToClusterWithHostList(hosts...)
 }
 
@@ -151,7 +155,7 @@ func getHostsFromDeployment() []string {
 	return hosts
 }
 
-func getTestProperties(config *config.Config, testName string) map[string]string{
+func getTestProperties(config *config.Config, testName string) map[string]string {
 	tests := config.Testing.Tests
 
 	for _, test := range tests {
