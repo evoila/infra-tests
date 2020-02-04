@@ -61,12 +61,11 @@ func IsCassandraDeploymentRunning(config *config.Config, infrastructure infrastr
 // @CassandraFailover
 func CassandraFailover(config *config.Config, infrastructure infrastructure.Infrastructure) bool {
 	fmt.Printf(InfoColor, "\n##### Failover Test #####\n")
+	setUp(config, infrastructure)
 
 	dataAmount := 100
 
-	if deployment.DeploymentName == "" {
-		deployment = infrastructure.GetDeployment()
-	}
+
 
 	// Write data to cassandra & check if it was stored correctly
 
