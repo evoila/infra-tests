@@ -7,6 +7,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/op/go-logging"
 	"os"
+	"time"
 )
 
 var Log = setUpLog()
@@ -128,6 +129,10 @@ func Failover(config *config.Config, infrastructure infrastructure.Infrastructur
 			infrastructure.Start(vm.ID)
 		}
 	}
+
+	// give the vms some time to restart
+	time.Sleep(5 * time.Second)
+
 
 	// Check if the data is still there
 	if infrastructure.AssertTrue(connectAndReadTestData(testCase, dataAmount)) != true {
