@@ -79,7 +79,7 @@ func Failover(config *config.Config, infrastructure infrastructure.Infrastructur
 	defer shutdown()
 	defer bulkDelete(sampleData)
 
-	log.Print("[INFO] Inserting Redis data... ")
+	log.Print("[INFO] Inserting Redis data...")
 	bulkSet(sampleData)
 
 	if infrastructure.AssertTrue(bulkSetSuccessful(sampleData)) != true {
@@ -104,6 +104,8 @@ func Failover(config *config.Config, infrastructure infrastructure.Infrastructur
 			infrastructure.Start(vm.ID)
 		}
 	}
+
+	log.Print("[INFO] Checking if Redis data still exists...")
 
 	// Check if the data is still there
 	if infrastructure.AssertTrue(bulkSetSuccessful(sampleData)) != true {
