@@ -17,7 +17,7 @@ func LogInfo(message string) {
 
 func LogInfoF(format string, args ...interface{}) {
 	logging.SetBackend(infoBackend)
-	logger.Infof(format, args)
+	logger.Infof(format, args...)
 }
 
 func LogError(err error, customMessage string) {
@@ -27,6 +27,6 @@ func LogError(err error, customMessage string) {
 
 func LogErrorF(format string, args ...interface{}) {
 	logging.SetBackend(errBackend)
-	logger.Errorf(format, args)
+	logger.Errorf(format, args...)
 }
 
