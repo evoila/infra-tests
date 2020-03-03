@@ -50,10 +50,6 @@ func readTestData(session *gocql.Session, amount int) bool {
 	for i := 0; i < amount; i++ {
 		data, err := readDataFromTest(session, i)
 
-		if err == nil {
-			Log.Infof("Found data: %i %s, %s", data.id, data.some, data.field)
-		}
-
 		if err != nil || !(data.some == "Foo" && data.field == "Bar") {
 			return false
 		}
