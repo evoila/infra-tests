@@ -8,7 +8,6 @@ import (
 	"time"
 )
 
-
 // @Info
 func Info(config *config.Config, infrastructure infrastructure.Infrastructure) bool {
 	fmt.Printf(InfoColor, "\n##### Deployment Info #####\n")
@@ -64,11 +63,21 @@ func Failover(config *config.Config, infrastructure infrastructure.Infrastructur
 	fmt.Printf(InfoColor, "\n##### Failover Test #####\n")
 	setUp(config, infrastructure)
 
+	vms := deployment.VMs
+
+	var excludingVm = ""
+	for _, test := range config.Testing.Tests {
+		if test.Name == "Failover" {
+			excludingVm = test.Properties["test_vm_name"]
+			LogInfo("Excluding VM with Ip: " + excludingVm)
+		}
+	}
+
+	hosts := getHostsFromDeploymentExcludeOne(excludingVm)
 	dataAmount := 100
 
 	// Write data to cassandra & check if it was stored correctly
-
-	session, err := connectToCluster()
+	session, err := connectToClusterWithHostList(hosts)
 	if err != nil {
 		LogErrorF(color.RedString("[ERROR] Failover test failed. Could not connect to cluster."))
 		return false
@@ -83,20 +92,15 @@ func Failover(config *config.Config, infrastructure infrastructure.Infrastructur
 		return false
 	}
 
-	if infrastructure.AssertTrue(connectAndReadTestData(testCase, dataAmount)) != true {
-		LogErrorF(color.RedString("[ERROR] Failover test failed"))
-		return false
+	keyspace, err := connectToKeyspaceWithHostList(testCase, hosts)
+
+	if err != nil {
+		LogErrorF(color.RedString("[ERROR] Failover test failed. Could not connect to keyspace with cause." + err.Error()))
 	}
 
-	vms := deployment.VMs
-
-	var excludingVm = ""
-
-	for _, test := range config.Testing.Tests {
-		if test.Name == "Failover" {
-			excludingVm = test.Properties["test_vm_name"]
-			LogInfo("Excluding VM with Ip: " + excludingVm)
-		}
+	if infrastructure.AssertTrue(readTestData(keyspace, dataAmount)) != true {
+		LogErrorF(color.RedString("[ERROR] Failover test failed"))
+		return false
 	}
 
 	// Stop all VMs corresponding to the service name
@@ -106,9 +110,6 @@ func Failover(config *config.Config, infrastructure infrastructure.Infrastructur
 			infrastructure.Stop(vm.ID)
 		}
 	}
-
-	// give the vms some time to shutdown
-	time.Sleep(10 * time.Second)
 
 	// Start all VMs corresponding to the service name
 	for _, vm := range vms {
@@ -122,23 +123,24 @@ func Failover(config *config.Config, infrastructure infrastructure.Infrastructur
 	time.Sleep(10 * time.Second)
 
 	// Check if the data is still there
-	if infrastructure.AssertTrue(connectAndReadTestData(testCase, dataAmount)) != true {
-		LogErrorF(color.RedString("[ERROR] Failover test failed"))
-		return false
-	}
-
-	session, err = connectToCluster()
+	keyspace, err = connectToKeyspaceWithHostList(testCase, hosts)
 	if err != nil {
 		LogErrorF(color.RedString("[ERROR] Failover test failed. Could not connect to cluster."))
 		return false
 	}
-	defer session.Close()
+
+	if infrastructure.AssertTrue(readTestData(keyspace, dataAmount)) != true {
+		LogErrorF(color.RedString("[ERROR] Failover test failed"))
+		return false
+	}
 
 	// delete data
+
 	if dropKeyspace(session, testCase) != nil {
 		LogErrorF(color.RedString("[ERROR] Failover test failed"))
 		return false
 	}
+	defer session.Close()
 
 	LogInfoF(color.GreenString("[INFO] Failover test succeeded"))
 	return true

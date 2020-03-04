@@ -36,16 +36,6 @@ func fillUpWithTestData(session *gocql.Session, amount int, testCase string) err
 	return nil
 }
 
-func connectAndReadTestData(keyspace string, amount int) bool {
-	session, err := connectToKeyspace(keyspace)
-	if err != nil {
-		return false
-	}
-	defer session.Close()
-
-	return readTestData(session, amount)
-}
-
 func readTestData(session *gocql.Session, amount int) bool {
 	for i := 0; i < amount; i++ {
 		data, err := readDataFromTest(session, i)
@@ -143,6 +133,19 @@ func setUp(config *config.Config, infrastructure infrastructure.Infrastructure) 
 	if deployment.DeploymentName == "" {
 		deployment = infrastructure.GetDeployment()
 	}
+}
+
+func getHostsFromDeploymentExcludeOne(vmToExclude string) []string {
+	var hosts []string
+
+	for _, vm := range deployment.VMs {
+		for _, ip := range vm.IPs {
+			if vm.ID != vmToExclude {
+				hosts = append(hosts, ip)
+			}
+		}
+	}
+	return hosts
 }
 
 func getHostsFromDeployment() []string {

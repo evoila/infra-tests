@@ -29,4 +29,3 @@ func LogErrorF(format string, args ...interface{}) {
 	logging.SetBackend(errBackend)
 	logger.Errorf(format, args...)
 }
-
