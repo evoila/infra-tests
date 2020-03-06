@@ -4,9 +4,10 @@ import (
 	"errors"
 	"github.com/evoila/infraTESTure/config"
 	"github.com/evoila/infraTESTure/infrastructure"
+	"github.com/fatih/color"
 	"github.com/gocql/gocql"
 	"strconv"
-	"time"
+	"strings"
 )
 
 func fillUpWithTestData(session *gocql.Session, amount int, testCase string) error {
@@ -36,7 +37,28 @@ func fillUpWithTestData(session *gocql.Session, amount int, testCase string) err
 	return nil
 }
 
+func connectToKeyspace(testName string) (*gocql.Session, error) {
+	hosts := getHostsFromDeployment(testName)
+	return connectToKeyspaceWithHostList(testName, hosts)
+}
+
 func readTestData(session *gocql.Session, amount int) bool {
+	for i := 0; i < amount; i++ {
+		data, err := readDataFromTest(session, i)
+
+		if err != nil {
+			logger.Errorf(color.RedString("[ERROR] Failed to read test data with cause: " + err.Error()))
+			return false
+		}
+
+		if !(data.some == "Foo" && data.field == "Bar") {
+			logger.Error(color.RedString("[ERROR] Expected fields are not present!"))
+		}
+	}
+	return true
+}
+
+func readTestDataNoErrLog(session *gocql.Session, amount int) bool {
 	for i := 0; i < amount; i++ {
 		data, err := readDataFromTest(session, i)
 
@@ -60,51 +82,12 @@ func writeDataIntoTest(session *gocql.Session, id int, some, field string) error
 }
 
 func createKeyspace(session *gocql.Session, keyspace string) error {
-	return session.Query("CREATE KEYSPACE IF NOT EXISTS " + keyspace + " WITH " +
+	return session.Query("CREATE KEYSPACE IF NOT EXISTS " + strings.ToLower(keyspace) + " WITH " +
 		"replication = { 'class' : 'SimpleStrategy', 'replication_factor' : 1 };").Exec()
 }
 
 func dropKeyspace(session *gocql.Session, keyspace string) error {
-	return session.Query("DROP KEYSPACE IF EXISTS " + keyspace + ";").Exec()
-}
-
-func connectToKeyspace(keyspace string) (*gocql.Session, error) {
-	hosts := getHostsFromDeployment()
-	return connectToKeyspaceWithHostList(keyspace, hosts)
-}
-
-func connectToKeyspaceWithHostList(keyspace string, hosts []string) (*gocql.Session, error) {
-	cluster := gocql.NewCluster(hosts...)
-	cluster.Port = configuration.Service.Port
-	cluster.Keyspace = keyspace
-	cluster.Timeout = 20 * time.Second
-	cluster.Authenticator = gocql.PasswordAuthenticator{
-		Username: configuration.Service.Credentials.Username,
-		Password: configuration.Service.Credentials.Password,
-	}
-
-	return cluster.CreateSession()
-}
-
-func connectToCluster() (*gocql.Session, error) {
-	hosts := getHostsFromDeployment()
-	if hosts == nil {
-		return nil, errors.New("Hosts cannot be nil!")
-	}
-
-	return connectToClusterWithHostList(hosts)
-}
-
-func connectToClusterWithHostList(hosts []string) (*gocql.Session, error) {
-	cluster := gocql.NewCluster(hosts...)
-	cluster.Port = configuration.Service.Port
-	cluster.Timeout = 20 * time.Second
-	cluster.Authenticator = gocql.PasswordAuthenticator{
-		Username: configuration.Service.Credentials.Username,
-		Password: configuration.Service.Credentials.Password,
-	}
-
-	return cluster.CreateSession()
+	return session.Query("DROP KEYSPACE IF EXISTS " + strings.ToLower(keyspace) + ";").Exec()
 }
 
 func readDataFromTest(session *gocql.Session, identifier int) (*TestObject, error) {
@@ -135,30 +118,6 @@ func setUp(config *config.Config, infrastructure infrastructure.Infrastructure) 
 	}
 }
 
-func getHostsFromDeploymentExcludeOne(vmToExclude string) []string {
-	var hosts []string
-
-	for _, vm := range deployment.VMs {
-		for _, ip := range vm.IPs {
-			if vm.ID != vmToExclude {
-				hosts = append(hosts, ip)
-			}
-		}
-	}
-	return hosts
-}
-
-func getHostsFromDeployment() []string {
-	var hosts []string
-
-	for _, vm := range deployment.VMs {
-		for _, ip := range vm.IPs {
-			hosts = append(hosts, ip)
-		}
-	}
-	return hosts
-}
-
 func getTestProperties(config *config.Config, testName string) map[string]string {
 	tests := config.Testing.Tests
 
@@ -178,7 +137,6 @@ type TestObject struct {
 }
 
 const (
-	letters   = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	InfoColor = "\033[1;34m%s\033[0m"
 )
 
