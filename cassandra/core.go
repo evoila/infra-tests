@@ -83,7 +83,7 @@ func writeDataIntoTest(session *gocql.Session, id int, some, field string) error
 
 func createKeyspace(session *gocql.Session, keyspace string) error {
 	return session.Query("CREATE KEYSPACE IF NOT EXISTS " + strings.ToLower(keyspace) + " WITH " +
-		"replication = { 'class' : 'SimpleStrategy', 'replication_factor' : 1 };").Exec()
+		"replication = { 'class' : 'SimpleStrategy', 'replication_factor' : 3 };").Exec()
 }
 
 func dropKeyspace(session *gocql.Session, keyspace string) error {

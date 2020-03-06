@@ -44,7 +44,6 @@ func Failover(config *config.Config, infrastructure infrastructure.Infrastructur
 		LogErrorF(color.RedString("[ERROR] Failover test failed"))
 		return false
 	}
-
 	// Stop all VMs corresponding to the service name
 	for _, vm := range vms {
 		LogInfoF("[INFO] Stopping VM %v/%v", vm.ServiceName, vm.ID)
