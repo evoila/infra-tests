@@ -51,7 +51,7 @@ func SingleInstanceOutage(config *config.Config, infrastructure infrastructure.I
 	}
 
 	LogInfoF("[INFO] Restarting VM %v/%v", vm.ServiceName, vm.ID)
-	infrastructure.Start(vm.ID)
+	infrastructure.Start(vm.ServiceName + "/" + vm.ID)
 
 	// give the vms some time to restart
 	time.Sleep(10 * time.Second)
