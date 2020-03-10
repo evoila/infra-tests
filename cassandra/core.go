@@ -58,6 +58,23 @@ func readTestData(session *gocql.Session, amount int) bool {
 	return true
 }
 
+func accessTestData(session *gocql.Session, amount int) (float64, float64) {
+	var success = 0.0
+	var failed = 0.0
+
+	for i := 0; i < amount; i++ {
+		data, err := readDataFromTest(session, i)
+
+		if err != nil || !(data.some == "Foo" && data.field == "Bar") {
+			failed++
+		} else {
+			success++
+		}
+
+	}
+	return success, failed
+}
+
 func createTestTable(session *gocql.Session) error {
 	return session.Query("CREATE TABLE IF NOT EXISTS test (id int PRIMARY KEY , some text, field text);").Exec()
 }

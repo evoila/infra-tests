@@ -65,3 +65,16 @@ func connectToKeyspaceWithHostList(keyspace string, hosts []string) (*gocql.Sess
 
 	return cluster.CreateSession()
 }
+
+func connectToKeyspaceWithRetries(keyspaceName string, maxRetries int) (*gocql.Session, error) {
+	var err error
+	var session *gocql.Session
+	for i := 0; i < maxRetries; i++ {
+		session, err = connectToKeyspace(keyspaceName)
+		if err == nil {
+			LogInfoF("[INFO] Created Cassandra session after %d attempts", i+1)
+			return session, err
+		}
+	}
+	return session, err
+}

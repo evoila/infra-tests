@@ -33,7 +33,7 @@ func PackageLoss(config *config.Config, infrastructure infrastructure.Infrastruc
 	for _, vm := range vms{
 		log.Printf("[INFO] Adding %d%% package loss on VM %s/%s", lossPercentage, vm.ServiceName, vm.ID)
 
-		infrastructure.AddTrafficControl(vm.ID, directorIp, tc)
+		infrastructure.AddTrafficControl(vm, directorIp, tc)
 	}
 
 	openRedisConnection(config, deployment)
@@ -113,7 +113,7 @@ func NetworkDelay(config *config.Config, infrastructure infrastructure.Infrastru
 	for _, vm := range vms {
 		log.Printf("[INFO] Adding %dms delay on VM %s/%s", delay, vm.ServiceName, vm.ID)
 
-		infrastructure.AddTrafficControl(vm.ID, directorIp, tc)
+		infrastructure.AddTrafficControl(vm, directorIp, tc)
 	}
 
 	sampleData = createSampleDataSet(dataAmount)
@@ -145,6 +145,6 @@ func removeTrafficControl(vms []infrastructure.VM, infrastructure infrastructure
 	for _, vm := range deployment.VMs {
 		log.Printf("[INFO] Removing Traffic Shaping on VM %s/%s", vm.ServiceName, vm.ID)
 
-		infrastructure.RemoveTrafficControl(vm.ID)
+		infrastructure.RemoveTrafficControl(vm)
 	}
 }
