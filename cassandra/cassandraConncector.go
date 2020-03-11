@@ -20,7 +20,7 @@ func connectToCluster(testName string) (*gocql.Session, error) {
 func connectToClusterWithHostList(hosts []string) (*gocql.Session, error) {
 	cluster := gocql.NewCluster(hosts...)
 	cluster.Port = configuration.Service.Port
-	cluster.Timeout = 20 * time.Second
+	cluster.Timeout = 2000 * time.Second
 	cluster.Authenticator = gocql.PasswordAuthenticator{
 		Username: configuration.Service.Credentials.Username,
 		Password: configuration.Service.Credentials.Password,
@@ -57,7 +57,7 @@ func connectToKeyspaceWithHostList(keyspace string, hosts []string) (*gocql.Sess
 	cluster := gocql.NewCluster(hosts...)
 	cluster.Port = configuration.Service.Port
 	cluster.Keyspace = strings.ToLower(keyspace)
-	cluster.Timeout = 20 * time.Second
+	cluster.Timeout = 2000 * time.Second
 	cluster.Authenticator = gocql.PasswordAuthenticator{
 		Username: configuration.Service.Credentials.Username,
 		Password: configuration.Service.Credentials.Password,

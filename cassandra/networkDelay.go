@@ -45,7 +45,7 @@ func NetworkDelay(config *config.Config, infrastructure infrastructure.Infrastru
 
 	start := time.Now()
 	if infrastructure.AssertTrue(writeReadDelete(session, dataAmount, testCase)) != true {
-
+		return false
 	}
 	LogInfoF("[INFO] Reading and writing without delay took %s", time.Since(start))
 
@@ -55,10 +55,14 @@ func NetworkDelay(config *config.Config, infrastructure infrastructure.Infrastru
 	}
 	defer removeTrafficControl(vms, infrastructure)
 
-	// Measure the time it takes to put the sample data into redis without the network delay
+
+	// Measure the time it takes to put the sample data into cassandra without the network delay
 	// Add Network Delay to every vm
 	start = time.Now()
-	writeReadDelete(session, dataAmount, testCase)
+
+	if infrastructure.AssertTrue(writeReadDelete(session, dataAmount, testCase)) != true {
+		return false
+	}
 	LogInfoF("[INFO] Reading and writing with delay took %s", time.Since(start))
 
 	LogInfoF(color.GreenString("[INFO] Network Delay test succeeded"))
@@ -66,13 +70,13 @@ func NetworkDelay(config *config.Config, infrastructure infrastructure.Infrastru
 }
 
 func writeReadDelete(session *gocql.Session, dataAmount int, testCase string) bool {
-	err := fillUpWithTestData(session, dataAmount, testCase)
+	err := fillUpTestDataWithRetries(session, dataAmount, testCase, 10)
 	if err != nil {
 		LogErrorF(color.RedString("[ERROR] Network Delay test failed. Could not write test data with cause: " + err.Error()))
 		return false
 	}
 
-	keyspace, err := connectToKeyspace(testCase)
+	keyspace, err := connectToKeyspaceWithRetries(testCase, 10)
 
 	if err != nil {
 		LogErrorF(color.RedString("[ERROR] Network Delay test failed. Could not connect to keyspace with cause: " + err.Error()))

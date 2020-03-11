@@ -37,6 +37,18 @@ func fillUpWithTestData(session *gocql.Session, amount int, testCase string) err
 	return nil
 }
 
+func fillUpTestDataWithRetries(session *gocql.Session, amount int, testCase string, retries int) error {
+	var err error
+	for i := 0; i < retries; i++ {
+		err = fillUpWithTestData(session, amount, testCase)
+		if err == nil {
+			LogInfoF("[INFO] Wrote test data after %d attempts", i+1)
+			return nil
+		}
+	}
+	return err
+}
+
 func connectToKeyspace(testName string) (*gocql.Session, error) {
 	hosts := getHostsFromDeployment(testName)
 	return connectToKeyspaceWithHostList(testName, hosts)
