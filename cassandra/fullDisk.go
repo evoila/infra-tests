@@ -33,7 +33,7 @@ func Storage(config *config.Config, infrastructure infrastructure.Infrastructure
 
 		infrastructure.FillDisk(size, path, filename, vm.ID)
 	}
-//	defer cleanup(vms, infrastructure, path, filename)
+//	defer cleanupDisk(vms, infrastructure, path, filename)
 
 	dataAmount := 100
 
@@ -50,7 +50,7 @@ func Storage(config *config.Config, infrastructure infrastructure.Infrastructure
 		LogErrorF(color.RedString("[ERROR] Storage test failed. Could write test data with cause, despite full persistence disk!."))
 	}
 
-	cleanup(vms, infrastructure, path, filename)
+	cleanupDisk(vms, infrastructure, path, filename)
 
 	session, err = connectToCluster(testCase)
 	if err != nil {
@@ -87,7 +87,7 @@ func Storage(config *config.Config, infrastructure infrastructure.Infrastructure
 	return true
 }
 
-func cleanup(vms []infrastructure.VM, infrastructure infrastructure.Infrastructure, path string, filename string) {
+func cleanupDisk(vms []infrastructure.VM, infrastructure infrastructure.Infrastructure, path string, filename string) {
 	// Remove the big data files to free the persistent disc space again
 	for _, vm := range vms {
 		LogInfoF("[INFO] Cleanup storage of VM %s/%s...", vm.ServiceName, vm.ID)

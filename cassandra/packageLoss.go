@@ -73,11 +73,18 @@ func PackageLoss(config *config.Config, infrastructure infrastructure.Infrastruc
 }
 
 func removeTrafficControlAndCleanUp(vms []infrastructure.VM, infrastructure infrastructure.Infrastructure, session *gocql.Session, testCase string) {
+	removeTrafficControl(vms, infrastructure)
+	cleanupCassandra(session, testCase)
+}
+func removeTrafficControl(vms []infrastructure.VM, infrastructure infrastructure.Infrastructure,)  {
 	// Remove network delay from all vms
 	for _, vm := range vms {
 		LogInfoF("[INFO] Removing Traffic Shaping on VM %s/%s", vm.ServiceName, vm.ID)
-
 		infrastructure.RemoveTrafficControl(vm)
-		dropKeyspace(session, testCase)
 	}
+
+}
+
+func cleanupCassandra(session *gocql.Session, testCase string) {
+	dropKeyspace(session, testCase)
 }
